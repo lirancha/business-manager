@@ -34,8 +34,12 @@
             <!-- Categories Container -->
             <div id="categories-container"></div>
 
-            <!-- No edit message -->
-            <p class="text-center text-gray-400 text-sm mt-4">Contact manager to update inventory</p>
+            <!-- Share Inventory Button -->
+            <div class="mt-4">
+                <button onclick="shareInventory()" class="w-full bg-emerald-500 text-white py-3 rounded-lg font-medium hover:bg-emerald-600">
+                    Share Inventory
+                </button>
+            </div>
         </div>
 
         <!-- Tasks Tab -->
@@ -252,6 +256,48 @@
                 total: taskList.tasks.length,
                 percent: Math.round((completed / taskList.tasks.length) * 100)
             };
+        }
+
+        // Inventory Sharing
+        function shareInventory() {
+            if (state.categories.length === 0) {
+                alert('No inventory to share!');
+                return;
+            }
+
+            let inventoryText = `INVENTORY STATUS\n${new Date().toLocaleDateString()}\n${'═'.repeat(25)}\n`;
+
+            state.categories.forEach(category => {
+                inventoryText += `\n${category.name.toUpperCase()}\n${'─'.repeat(20)}\n`;
+                if (category.products.length === 0) {
+                    inventoryText += `  (No products)\n`;
+                } else {
+                    category.products.forEach(product => {
+                        const status = getStockStatus(product.quantity);
+                        inventoryText += `${product.name}: ${product.quantity} (${status.label})\n`;
+                    });
+                }
+            });
+
+            // Add summary of low/missing items
+            const lowItems = [];
+            state.categories.forEach(category => {
+                category.products.forEach(product => {
+                    if (product.quantity <= 2) {
+                        lowItems.push(`${product.name} (${product.quantity})`);
+                    }
+                });
+            });
+
+            if (lowItems.length > 0) {
+                inventoryText += `\n${'═'.repeat(25)}\nNEEDS RESTOCK:\n`;
+                lowItems.forEach(item => {
+                    inventoryText += `- ${item}\n`;
+                });
+            }
+
+            document.getElementById('share-text').textContent = inventoryText;
+            document.getElementById('share-modal').classList.remove('hidden');
         }
 
         // Task Sharing
