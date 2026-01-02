@@ -98,10 +98,57 @@
     </div>
 
     <script>
-        // Data State
+        // Data State (with demo data)
         let state = {
-            categories: [],
-            taskLists: []
+            categories: [
+                {
+                    id: 1,
+                    name: "Fridge",
+                    products: [
+                        { id: 101, name: "Milk", quantity: 5 },
+                        { id: 102, name: "Eggs", quantity: 0 },
+                        { id: 103, name: "Butter", quantity: 3 },
+                        { id: 104, name: "Cheese", quantity: 1 }
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "Dry Storage",
+                    products: [
+                        { id: 201, name: "Flour", quantity: 4 },
+                        { id: 202, name: "Sugar", quantity: 0 },
+                        { id: 203, name: "Rice", quantity: 2 }
+                    ]
+                }
+            ],
+            taskLists: [
+                {
+                    id: 1,
+                    name: "Opening Shift",
+                    tasks: [
+                        { id: 101, text: "Turn on all equipment", done: false },
+                        { id: 102, text: "Check fridge temperature", done: false },
+                        { id: 103, text: "Prep station setup", done: false }
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "Closing Shift",
+                    tasks: [
+                        { id: 201, text: "Clean all surfaces", done: false },
+                        { id: 202, text: "Empty trash bins", done: false },
+                        { id: 203, text: "Lock refrigerators", done: false }
+                    ]
+                },
+                {
+                    id: 3,
+                    name: "Kitchen Tasks",
+                    tasks: [
+                        { id: 301, text: "Sanitize cutting boards", done: false },
+                        { id: 302, text: "Sharpen knives", done: false }
+                    ]
+                }
+            ]
         };
 
         // Load from localStorage (same key as manager app to share data)
