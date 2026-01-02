@@ -212,6 +212,25 @@
             return { label: 'In Stock', color: 'bg-green-100 text-green-700' };
         }
 
+        // Quantity Functions (employees can adjust quantity)
+        function incrementQuantity(categoryId, productId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            product.quantity++;
+            saveState();
+            renderCategories();
+        }
+
+        function decrementQuantity(categoryId, productId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            if (product.quantity > 0) {
+                product.quantity--;
+            }
+            saveState();
+            renderCategories();
+        }
+
         // Task Functions (only toggle allowed)
         function toggleTask(listId, taskId) {
             const taskList = state.taskLists.find(l => l.id === listId);
@@ -357,9 +376,19 @@
                                 <div class="flex items-center justify-between py-2">
                                     <span class="${isLowOrMissing ? 'text-red-500 font-medium' : ''}">${product.name}</span>
                                     <div class="flex items-center gap-2">
-                                        <span class="px-3 py-1 bg-gray-100 rounded-lg font-medium text-sm">
-                                            ${product.quantity}
-                                        </span>
+                                        <div class="flex items-center">
+                                            <button onclick="decrementQuantity(${category.id}, ${product.id})"
+                                                    class="w-8 h-8 rounded-l-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                                -
+                                            </button>
+                                            <span class="w-10 h-8 flex items-center justify-center bg-gray-100 font-medium text-sm">
+                                                ${product.quantity}
+                                            </span>
+                                            <button onclick="incrementQuantity(${category.id}, ${product.id})"
+                                                    class="w-8 h-8 rounded-r-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                                +
+                                            </button>
+                                        </div>
                                         <span class="px-2 py-1 rounded-full text-xs font-medium ${status.color}">
                                             ${status.label}
                                         </span>
