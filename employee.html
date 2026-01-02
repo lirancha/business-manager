@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff View - Tasks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-lg mx-auto px-4 py-3">
+            <h1 class="text-xl font-bold text-gray-800 text-center">Staff View</h1>
+            <p class="text-xs text-gray-400 text-center">View Only</p>
+        </div>
+        <!-- Tabs -->
+        <div class="max-w-lg mx-auto flex border-b">
+            <button id="tab-inventory" class="flex-1 py-3 text-center font-medium tab-active" onclick="switchTab('inventory')">
+                Inventory
+            </button>
+            <button id="tab-tasks" class="flex-1 py-3 text-center font-medium text-gray-500" onclick="switchTab('tasks')">
+                Daily Tasks
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-lg mx-auto pb-24">
+        <!-- Inventory Tab -->
+        <div id="inventory-tab" class="p-4">
+            <!-- Categories Container -->
+            <div id="categories-container"></div>
+
+            <!-- No edit message -->
+            <p class="text-center text-gray-400 text-sm mt-4">Contact manager to update inventory</p>
+        </div>
+
+        <!-- Tasks Tab -->
+        <div id="tasks-tab" class="p-4 hidden">
+            <!-- Task Lists Container -->
+            <div id="task-lists-container"></div>
+
+            <!-- Task Actions -->
+            <div class="mt-4">
+                <button onclick="shareAllTasks()" class="w-full bg-emerald-500 text-white py-3 rounded-lg font-medium hover:bg-emerald-600">
+                    Share Tasks
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Select Tasks Modal -->
+    <div id="select-tasks-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Select Lists to Share</h2>
+                <button onclick="closeSelectModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <div id="task-list-checkboxes" class="space-y-3"></div>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="closeSelectModal()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button onclick="shareSelectedTasks()" class="flex-1 bg-emerald-500 text-white py-3 rounded-lg font-medium hover:bg-emerald-600">
+                    Share Selected
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="share-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Share Task List</h2>
+                <button onclick="closeShareModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <pre id="share-text" class="bg-gray-100 p-4 rounded-lg text-sm whitespace-pre-wrap"></pre>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="copyTaskList()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Copy
+                </button>
+                <button onclick="shareTasksWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600">
+                    WhatsApp
+                </button>
+                <button onclick="shareTasksEmail()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600">
+                    Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data State
+        let state = {
+            categories: [],
+            taskLists: []
+        };
+
+        // Load from localStorage (same key as manager app to share data)
+        function loadState() {
+            const saved = localStorage.getItem('businessManagerDemo');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Migrate old format
+                if (parsed.tasks && !parsed.taskLists) {
+                    parsed.taskLists = [{
+                        id: 1,
+                        name: "General Tasks",
+                        tasks: parsed.tasks
+                    }];
+                    delete parsed.tasks;
+                }
+                if (!parsed.taskLists) {
+                    parsed.taskLists = [];
+                }
+                if (!parsed.categories) {
+                    parsed.categories = [];
+                }
+                state = parsed;
+            }
+            renderAll();
+        }
+
+        // Save to localStorage
+        function saveState() {
+            localStorage.setItem('businessManagerDemo', JSON.stringify(state));
+        }
+
+        // Tab Switching
+        function switchTab(tab) {
+            const inventoryTab = document.getElementById('inventory-tab');
+            const tasksTab = document.getElementById('tasks-tab');
+            const tabInventory = document.getElementById('tab-inventory');
+            const tabTasks = document.getElementById('tab-tasks');
+
+            if (tab === 'inventory') {
+                inventoryTab.classList.remove('hidden');
+                tasksTab.classList.add('hidden');
+                tabInventory.classList.add('tab-active');
+                tabInventory.classList.remove('text-gray-500');
+                tabTasks.classList.remove('tab-active');
+                tabTasks.classList.add('text-gray-500');
+            } else {
+                tasksTab.classList.remove('hidden');
+                inventoryTab.classList.add('hidden');
+                tabTasks.classList.add('tab-active');
+                tabTasks.classList.remove('text-gray-500');
+                tabInventory.classList.remove('tab-active');
+                tabInventory.classList.add('text-gray-500');
+            }
+        }
+
+        // Stock Status Helper
+        function getStockStatus(quantity) {
+            if (quantity === 0) return { label: 'Missing', color: 'bg-red-100 text-red-700' };
+            if (quantity <= 2) return { label: 'Low', color: 'bg-amber-100 text-amber-700' };
+            return { label: 'In Stock', color: 'bg-green-100 text-green-700' };
+        }
+
+        // Task Functions (only toggle allowed)
+        function toggleTask(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const task = taskList.tasks.find(t => t.id === taskId);
+            task.done = !task.done;
+            saveState();
+            renderTaskLists();
+        }
+
+        function getTaskListProgress(taskList) {
+            if (taskList.tasks.length === 0) return { completed: 0, total: 0, percent: 0 };
+            const completed = taskList.tasks.filter(t => t.done).length;
+            return {
+                completed,
+                total: taskList.tasks.length,
+                percent: Math.round((completed / taskList.tasks.length) * 100)
+            };
+        }
+
+        // Task Sharing
+        function shareTaskList(listId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (!taskList || taskList.tasks.length === 0) {
+                alert('No tasks to share in this list!');
+                return;
+            }
+
+            const progress = getTaskListProgress(taskList);
+            let taskText = `${taskList.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
+            taskList.tasks.forEach(task => {
+                const status = task.done ? '[x]' : '[ ]';
+                taskText += `${status} ${task.text}\n`;
+            });
+
+            taskText += `\n${'─'.repeat(20)}\nProgress: ${progress.completed}/${progress.total} completed (${progress.percent}%)`;
+
+            document.getElementById('share-text').textContent = taskText;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function shareAllTasks() {
+            if (state.taskLists.length === 0) {
+                alert('No task lists available!');
+                return;
+            }
+
+            const container = document.getElementById('task-list-checkboxes');
+            container.innerHTML = state.taskLists.map(taskList => {
+                const progress = getTaskListProgress(taskList);
+                return `
+                    <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                        <input type="checkbox" id="share-list-${taskList.id}" value="${taskList.id}" checked
+                               class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500">
+                        <div class="flex-1">
+                            <div class="font-medium">${taskList.name}</div>
+                            <div class="text-sm text-gray-500">${progress.total} tasks (${progress.completed} done)</div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+
+            document.getElementById('select-tasks-modal').classList.remove('hidden');
+        }
+
+        function closeSelectModal() {
+            document.getElementById('select-tasks-modal').classList.add('hidden');
+        }
+
+        function shareSelectedTasks() {
+            const checkboxes = document.querySelectorAll('#task-list-checkboxes input[type="checkbox"]:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (selectedIds.length === 0) {
+                alert('Please select at least one task list to share!');
+                return;
+            }
+
+            const selectedLists = state.taskLists.filter(l => selectedIds.includes(l.id));
+
+            let taskText = `DAILY TASKS\n${new Date().toLocaleDateString()}\n${'═'.repeat(25)}\n`;
+
+            selectedLists.forEach(taskList => {
+                const progress = getTaskListProgress(taskList);
+                taskText += `\n${taskList.name.toUpperCase()}\n${'─'.repeat(20)}\n`;
+                if (taskList.tasks.length === 0) {
+                    taskText += `  (No tasks)\n`;
+                } else {
+                    taskList.tasks.forEach(task => {
+                        const status = task.done ? '[x]' : '[ ]';
+                        taskText += `${status} ${task.text}\n`;
+                    });
+                    taskText += `Progress: ${progress.completed}/${progress.total} (${progress.percent}%)\n`;
+                }
+            });
+
+            closeSelectModal();
+            document.getElementById('share-text').textContent = taskText;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function copyTaskList() {
+            const text = document.getElementById('share-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Task list copied to clipboard!');
+            });
+        }
+
+        function shareTasksWhatsApp() {
+            const text = encodeURIComponent(document.getElementById('share-text').textContent);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function shareTasksEmail() {
+            const text = encodeURIComponent(document.getElementById('share-text').textContent);
+            const subject = encodeURIComponent(`Daily Tasks - ${new Date().toLocaleDateString()}`);
+            window.open(`mailto:?subject=${subject}&body=${text}`, '_blank');
+        }
+
+        // Render Functions (View Only - no edit controls)
+        function renderCategories() {
+            const container = document.getElementById('categories-container');
+
+            if (state.categories.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8 bg-white rounded-lg shadow">No inventory items yet.</p>';
+                return;
+            }
+
+            container.innerHTML = state.categories.map(category => `
+                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+                    <div class="bg-gray-800 text-white px-4 py-3">
+                        <h3 class="font-bold">${category.name}</h3>
+                    </div>
+                    <div class="p-3">
+                        <div class="divide-y">
+                            ${category.products.map(product => {
+                                const status = getStockStatus(product.quantity);
+                                const isLowOrMissing = product.quantity <= 2;
+                                return `
+                                <div class="flex items-center justify-between py-2">
+                                    <span class="${isLowOrMissing ? 'text-red-500 font-medium' : ''}">${product.name}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-3 py-1 bg-gray-100 rounded-lg font-medium text-sm">
+                                            ${product.quantity}
+                                        </span>
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium ${status.color}">
+                                            ${status.label}
+                                        </span>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                            ${category.products.length === 0 ? '<p class="text-gray-400 text-sm py-2">No products</p>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTaskLists() {
+            const container = document.getElementById('task-lists-container');
+
+            if (state.taskLists.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8 bg-white rounded-lg shadow">No task lists available.</p>';
+                return;
+            }
+
+            container.innerHTML = state.taskLists.map(taskList => {
+                const progress = getTaskListProgress(taskList);
+                return `
+                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+                    <div class="bg-blue-600 text-white px-4 py-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold">${taskList.name}</h3>
+                            <span class="text-blue-200 text-sm">${progress.completed}/${progress.total}</span>
+                        </div>
+                        ${progress.total > 0 ? `
+                        <div class="mt-2 bg-blue-800 rounded-full h-2">
+                            <div class="bg-white rounded-full h-2 transition-all" style="width: ${progress.percent}%"></div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="p-3">
+                        <div class="divide-y">
+                            ${taskList.tasks.map(task => `
+                                <div class="flex items-center gap-3 py-2 ${task.done ? 'opacity-60' : ''}">
+                                    <input type="checkbox" ${task.done ? 'checked' : ''}
+                                           onchange="toggleTask(${taskList.id}, ${task.id})"
+                                           class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
+                                    <span class="flex-1 ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                                </div>
+                            `).join('')}
+                            ${taskList.tasks.length === 0 ? '<p class="text-gray-400 text-sm py-2">No tasks</p>' : ''}
+                        </div>
+                        ${taskList.tasks.length > 0 ? `
+                        <div class="mt-3 pt-3 border-t">
+                            <button onclick="shareTaskList(${taskList.id})" class="w-full bg-emerald-100 text-emerald-700 py-2 rounded-lg text-sm hover:bg-emerald-200">
+                                Share This List
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderAll() {
+            renderCategories();
+            renderTaskLists();
+        }
+
+        // Close modals on backdrop click
+        document.getElementById('select-tasks-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'select-tasks-modal') closeSelectModal();
+        });
+
+        document.getElementById('share-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'share-modal') closeShareModal();
+        });
+
+        // Initialize
+        loadState();
+    </script>
+</body>
+</html>
