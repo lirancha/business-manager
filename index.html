@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory & Tasks</title>
+    <title>Business Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
     </style>
@@ -147,85 +150,56 @@
     </div>
 
     <script>
-        // Data State
-        let state = {
-            categories: [
-                {
-                    id: 1,
-                    name: "Fridge",
-                    products: [
-                        { id: 101, name: "Milk", quantity: 5 },
-                        { id: 102, name: "Eggs", quantity: 0 },
-                        { id: 103, name: "Butter", quantity: 3 },
-                        { id: 104, name: "Cheese", quantity: 1 }
-                    ]
-                },
-                {
-                    id: 2,
-                    name: "Dry Storage",
-                    products: [
-                        { id: 201, name: "Flour", quantity: 4 },
-                        { id: 202, name: "Sugar", quantity: 0 },
-                        { id: 203, name: "Rice", quantity: 2 }
-                    ]
-                }
-            ],
-            taskLists: [
-                {
-                    id: 1,
-                    name: "Opening Shift",
-                    tasks: [
-                        { id: 101, text: "Turn on all equipment", done: true },
-                        { id: 102, text: "Check fridge temperature", done: false },
-                        { id: 103, text: "Prep station setup", done: false }
-                    ]
-                },
-                {
-                    id: 2,
-                    name: "Closing Shift",
-                    tasks: [
-                        { id: 201, text: "Clean all surfaces", done: false },
-                        { id: 202, text: "Empty trash bins", done: false },
-                        { id: 203, text: "Lock refrigerators", done: false }
-                    ]
-                },
-                {
-                    id: 3,
-                    name: "Kitchen Tasks",
-                    tasks: [
-                        { id: 301, text: "Sanitize cutting boards", done: true },
-                        { id: 302, text: "Sharpen knives", done: false }
-                    ]
-                }
-            ]
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
+            authDomain: "zucca-mang.firebaseapp.com",
+            projectId: "zucca-mang",
+            storageBucket: "zucca-mang.firebasestorage.app",
+            messagingSenderId: "423632065920",
+            appId: "1:423632065920:web:43c340defd3fe33442dd65"
         };
 
-        // Load from localStorage (if exists, otherwise use demo data)
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Data State
+        let state = {
+            categories: [],
+            taskLists: []
+        };
+
+        // Load from Firestore and listen for real-time updates
         function loadState() {
-            const saved = localStorage.getItem('businessManagerDemo');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                // Migrate old format (tasks array) to new format (taskLists)
-                if (parsed.tasks && !parsed.taskLists) {
-                    parsed.taskLists = [{
-                        id: 1,
-                        name: "General Tasks",
-                        tasks: parsed.tasks
-                    }];
-                    delete parsed.tasks;
+            db.collection('business').doc('data').onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    state.categories = data.categories || [];
+                    state.taskLists = data.taskLists || [];
+                } else {
+                    // First time - create initial empty data
+                    state.categories = [];
+                    state.taskLists = [];
+                    saveState();
                 }
-                // Ensure taskLists exists
-                if (!parsed.taskLists) {
-                    parsed.taskLists = [];
-                }
-                state = parsed;
-            }
-            renderAll();
+                renderAll();
+            }, (error) => {
+                console.error("Error loading data:", error);
+                // Fallback to empty state
+                renderAll();
+            });
         }
 
-        // Save to localStorage
+        // Save to Firestore
         function saveState() {
-            localStorage.setItem('businessManagerDemo', JSON.stringify(state));
+            db.collection('business').doc('data').set({
+                categories: state.categories,
+                taskLists: state.taskLists
+            }).catch((error) => {
+                console.error("Error saving data:", error);
+                alert("Error saving. Please check your connection.");
+            });
         }
 
         // Tab Switching
