@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory & Tasks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-lg mx-auto px-4 py-3">
+            <h1 class="text-xl font-bold text-gray-800 text-center">Business Manager</h1>
+        </div>
+        <!-- Tabs -->
+        <div class="max-w-lg mx-auto flex border-b">
+            <button id="tab-inventory" class="flex-1 py-3 text-center font-medium tab-active" onclick="switchTab('inventory')">
+                Inventory Check
+            </button>
+            <button id="tab-tasks" class="flex-1 py-3 text-center font-medium text-gray-500" onclick="switchTab('tasks')">
+                Daily Tasks
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-lg mx-auto pb-24">
+        <!-- Inventory Tab -->
+        <div id="inventory-tab" class="p-4">
+            <!-- Add Category -->
+            <div class="bg-white rounded-lg shadow p-4 mb-4">
+                <div class="flex gap-2">
+                    <input type="text" id="new-category" placeholder="New category name..."
+                           class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="addCategory()" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600">
+                        + Add
+                    </button>
+                </div>
+            </div>
+
+            <!-- Categories Container -->
+            <div id="categories-container"></div>
+
+            <!-- Generate Order Button -->
+            <div class="mt-4">
+                <button onclick="generateOrder()" class="w-full bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 flex items-center justify-center gap-2">
+                    Generate Order List
+                </button>
+            </div>
+        </div>
+
+        <!-- Tasks Tab -->
+        <div id="tasks-tab" class="p-4 hidden">
+            <!-- Add Task List -->
+            <div class="bg-white rounded-lg shadow p-4 mb-4">
+                <div class="flex gap-2">
+                    <input type="text" id="new-task-list" placeholder="New task list (e.g., Opening Shift)..."
+                           class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="addTaskList()" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600">
+                        + Add
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task Lists Container -->
+            <div id="task-lists-container"></div>
+
+            <!-- Task Actions -->
+            <div class="mt-4">
+                <button onclick="shareAllTasks()" class="w-full bg-emerald-500 text-white py-3 rounded-lg font-medium hover:bg-emerald-600">
+                    Share All Tasks
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Order Modal -->
+    <div id="order-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Missing Items Order</h2>
+                <button onclick="closeModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <pre id="order-text" class="bg-gray-100 p-4 rounded-lg text-sm whitespace-pre-wrap"></pre>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="copyOrder()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Copy
+                </button>
+                <button onclick="shareViaWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600">
+                    WhatsApp
+                </button>
+                <button onclick="shareViaEmail()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600">
+                    Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="share-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Share Task List</h2>
+                <button onclick="closeShareModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <pre id="share-text" class="bg-gray-100 p-4 rounded-lg text-sm whitespace-pre-wrap"></pre>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="copyTaskList()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Copy
+                </button>
+                <button onclick="shareTasksWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600">
+                    WhatsApp
+                </button>
+                <button onclick="shareTasksEmail()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600">
+                    Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data State
+        let state = {
+            categories: [
+                {
+                    id: 1,
+                    name: "Fridge",
+                    products: [
+                        { id: 101, name: "Milk", quantity: 5 },
+                        { id: 102, name: "Eggs", quantity: 0 },
+                        { id: 103, name: "Butter", quantity: 3 },
+                        { id: 104, name: "Cheese", quantity: 1 }
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "Dry Storage",
+                    products: [
+                        { id: 201, name: "Flour", quantity: 4 },
+                        { id: 202, name: "Sugar", quantity: 0 },
+                        { id: 203, name: "Rice", quantity: 2 }
+                    ]
+                }
+            ],
+            taskLists: [
+                {
+                    id: 1,
+                    name: "Opening Shift",
+                    tasks: [
+                        { id: 101, text: "Turn on all equipment", done: true },
+                        { id: 102, text: "Check fridge temperature", done: false },
+                        { id: 103, text: "Prep station setup", done: false }
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "Closing Shift",
+                    tasks: [
+                        { id: 201, text: "Clean all surfaces", done: false },
+                        { id: 202, text: "Empty trash bins", done: false },
+                        { id: 203, text: "Lock refrigerators", done: false }
+                    ]
+                },
+                {
+                    id: 3,
+                    name: "Kitchen Tasks",
+                    tasks: [
+                        { id: 301, text: "Sanitize cutting boards", done: true },
+                        { id: 302, text: "Sharpen knives", done: false }
+                    ]
+                }
+            ]
+        };
+
+        // Load from localStorage (if exists, otherwise use demo data)
+        function loadState() {
+            const saved = localStorage.getItem('businessManagerDemo');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Migrate old format (tasks array) to new format (taskLists)
+                if (parsed.tasks && !parsed.taskLists) {
+                    parsed.taskLists = [{
+                        id: 1,
+                        name: "General Tasks",
+                        tasks: parsed.tasks
+                    }];
+                    delete parsed.tasks;
+                }
+                // Ensure taskLists exists
+                if (!parsed.taskLists) {
+                    parsed.taskLists = [];
+                }
+                state = parsed;
+            }
+            renderAll();
+        }
+
+        // Save to localStorage
+        function saveState() {
+            localStorage.setItem('businessManagerDemo', JSON.stringify(state));
+        }
+
+        // Tab Switching
+        function switchTab(tab) {
+            const inventoryTab = document.getElementById('inventory-tab');
+            const tasksTab = document.getElementById('tasks-tab');
+            const tabInventory = document.getElementById('tab-inventory');
+            const tabTasks = document.getElementById('tab-tasks');
+
+            if (tab === 'inventory') {
+                inventoryTab.classList.remove('hidden');
+                tasksTab.classList.add('hidden');
+                tabInventory.classList.add('tab-active');
+                tabInventory.classList.remove('text-gray-500');
+                tabTasks.classList.remove('tab-active');
+                tabTasks.classList.add('text-gray-500');
+            } else {
+                tasksTab.classList.remove('hidden');
+                inventoryTab.classList.add('hidden');
+                tabTasks.classList.add('tab-active');
+                tabTasks.classList.remove('text-gray-500');
+                tabInventory.classList.remove('tab-active');
+                tabInventory.classList.add('text-gray-500');
+            }
+        }
+
+        // Category Functions
+        function addCategory() {
+            const input = document.getElementById('new-category');
+            const name = input.value.trim();
+            if (!name) return;
+
+            state.categories.push({
+                id: Date.now(),
+                name: name,
+                products: []
+            });
+            input.value = '';
+            saveState();
+            renderCategories();
+        }
+
+        function deleteCategory(categoryId) {
+            if (!confirm('Delete this category and all its products?')) return;
+            state.categories = state.categories.filter(c => c.id !== categoryId);
+            saveState();
+            renderCategories();
+        }
+
+        // Product Functions
+        function addProduct(categoryId) {
+            const input = document.getElementById(`product-input-${categoryId}`);
+            const name = input.value.trim();
+            if (!name) return;
+
+            const category = state.categories.find(c => c.id === categoryId);
+            category.products.push({
+                id: Date.now(),
+                name: name,
+                quantity: 5
+            });
+            input.value = '';
+            saveState();
+            renderCategories();
+        }
+
+        function incrementQuantity(categoryId, productId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            product.quantity++;
+            saveState();
+            renderCategories();
+        }
+
+        function decrementQuantity(categoryId, productId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            if (product.quantity > 0) {
+                product.quantity--;
+            }
+            saveState();
+            renderCategories();
+        }
+
+        function getStockStatus(quantity) {
+            if (quantity === 0) return { label: 'Missing', color: 'bg-red-100 text-red-700' };
+            if (quantity <= 2) return { label: 'Low', color: 'bg-amber-100 text-amber-700' };
+            return { label: 'In Stock', color: 'bg-green-100 text-green-700' };
+        }
+
+        function deleteProduct(categoryId, productId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            category.products = category.products.filter(p => p.id !== productId);
+            saveState();
+            renderCategories();
+        }
+
+        // Task List Functions
+        function addTaskList() {
+            const input = document.getElementById('new-task-list');
+            const name = input.value.trim();
+            if (!name) return;
+
+            state.taskLists.push({
+                id: Date.now(),
+                name: name,
+                tasks: []
+            });
+            input.value = '';
+            saveState();
+            renderTaskLists();
+        }
+
+        function deleteTaskList(listId) {
+            if (!confirm('Delete this task list and all its tasks?')) return;
+            state.taskLists = state.taskLists.filter(l => l.id !== listId);
+            saveState();
+            renderTaskLists();
+        }
+
+        function addTask(listId) {
+            const input = document.getElementById(`task-input-${listId}`);
+            const text = input.value.trim();
+            if (!text) return;
+
+            const taskList = state.taskLists.find(l => l.id === listId);
+            taskList.tasks.push({
+                id: Date.now(),
+                text: text,
+                done: false
+            });
+            input.value = '';
+            saveState();
+            renderTaskLists();
+        }
+
+        function toggleTask(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const task = taskList.tasks.find(t => t.id === taskId);
+            task.done = !task.done;
+            saveState();
+            renderTaskLists();
+        }
+
+        function deleteTask(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            taskList.tasks = taskList.tasks.filter(t => t.id !== taskId);
+            saveState();
+            renderTaskLists();
+        }
+
+        function clearCompletedTasks(listId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            taskList.tasks = taskList.tasks.filter(t => !t.done);
+            saveState();
+            renderTaskLists();
+        }
+
+        function getTaskListProgress(taskList) {
+            if (taskList.tasks.length === 0) return { completed: 0, total: 0, percent: 0 };
+            const completed = taskList.tasks.filter(t => t.done).length;
+            return {
+                completed,
+                total: taskList.tasks.length,
+                percent: Math.round((completed / taskList.tasks.length) * 100)
+            };
+        }
+
+        // Order Generation
+        function generateOrder() {
+            const missingItems = [];
+            state.categories.forEach(category => {
+                const lowStock = category.products.filter(p => p.quantity <= 2);
+                if (lowStock.length > 0) {
+                    missingItems.push({
+                        category: category.name,
+                        items: lowStock.map(p => ({
+                            name: p.name,
+                            quantity: p.quantity,
+                            status: p.quantity === 0 ? 'MISSING' : 'LOW'
+                        }))
+                    });
+                }
+            });
+
+            if (missingItems.length === 0) {
+                alert('No missing or low stock items! All inventory is well stocked.');
+                return;
+            }
+
+            let orderText = `ORDER LIST\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
+            missingItems.forEach(group => {
+                orderText += `${group.category.toUpperCase()}\n`;
+                group.items.forEach(item => {
+                    orderText += `  - ${item.name} (${item.status}, ${item.quantity} left)\n`;
+                });
+                orderText += '\n';
+            });
+
+            document.getElementById('order-text').textContent = orderText;
+            document.getElementById('order-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('order-modal').classList.add('hidden');
+        }
+
+        function copyOrder() {
+            const text = document.getElementById('order-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Order list copied to clipboard!');
+            });
+        }
+
+        function shareViaWhatsApp() {
+            const text = encodeURIComponent(document.getElementById('order-text').textContent);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function shareViaEmail() {
+            const text = encodeURIComponent(document.getElementById('order-text').textContent);
+            const subject = encodeURIComponent(`Order List - ${new Date().toLocaleDateString()}`);
+            window.open(`mailto:?subject=${subject}&body=${text}`, '_blank');
+        }
+
+        // Task Sharing
+        function shareTaskList(listId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (!taskList || taskList.tasks.length === 0) {
+                alert('No tasks to share in this list!');
+                return;
+            }
+
+            const progress = getTaskListProgress(taskList);
+            let taskText = `${taskList.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
+            taskList.tasks.forEach(task => {
+                const status = task.done ? '[x]' : '[ ]';
+                taskText += `${status} ${task.text}\n`;
+            });
+
+            taskText += `\n${'─'.repeat(20)}\nProgress: ${progress.completed}/${progress.total} completed (${progress.percent}%)`;
+
+            document.getElementById('share-text').textContent = taskText;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function shareAllTasks() {
+            if (state.taskLists.length === 0) {
+                alert('No task lists to share!');
+                return;
+            }
+
+            let taskText = `ALL DAILY TASKS\n${new Date().toLocaleDateString()}\n${'═'.repeat(25)}\n`;
+
+            state.taskLists.forEach(taskList => {
+                const progress = getTaskListProgress(taskList);
+                taskText += `\n${taskList.name.toUpperCase()}\n${'─'.repeat(20)}\n`;
+                if (taskList.tasks.length === 0) {
+                    taskText += `  (No tasks)\n`;
+                } else {
+                    taskList.tasks.forEach(task => {
+                        const status = task.done ? '[x]' : '[ ]';
+                        taskText += `${status} ${task.text}\n`;
+                    });
+                    taskText += `Progress: ${progress.completed}/${progress.total} (${progress.percent}%)\n`;
+                }
+            });
+
+            document.getElementById('share-text').textContent = taskText;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function copyTaskList() {
+            const text = document.getElementById('share-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Task list copied to clipboard!');
+            });
+        }
+
+        function shareTasksWhatsApp() {
+            const text = encodeURIComponent(document.getElementById('share-text').textContent);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function shareTasksEmail() {
+            const text = encodeURIComponent(document.getElementById('share-text').textContent);
+            const subject = encodeURIComponent(`Daily Tasks - ${new Date().toLocaleDateString()}`);
+            window.open(`mailto:?subject=${subject}&body=${text}`, '_blank');
+        }
+
+        // Render Functions
+        function renderCategories() {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = state.categories.map(category => `
+                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+                    <div class="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
+                        <h3 class="font-bold">${category.name}</h3>
+                        <button onclick="deleteCategory(${category.id})" class="text-red-300 hover:text-red-100 text-sm">
+                            Delete
+                        </button>
+                    </div>
+                    <div class="p-3">
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="product-input-${category.id}" placeholder="Add product..."
+                                   class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   onkeypress="if(event.key==='Enter')addProduct(${category.id})">
+                            <button onclick="addProduct(${category.id})" class="bg-gray-200 px-3 py-2 rounded-lg text-sm hover:bg-gray-300">
+                                +
+                            </button>
+                        </div>
+                        <div class="divide-y">
+                            ${category.products.map(product => {
+                                const status = getStockStatus(product.quantity);
+                                const isLowOrMissing = product.quantity <= 2;
+                                return `
+                                <div class="flex items-center justify-between py-2">
+                                    <span class="${isLowOrMissing ? 'text-red-500 font-medium' : ''}">${product.name}</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex items-center">
+                                            <button onclick="decrementQuantity(${category.id}, ${product.id})"
+                                                    class="w-8 h-8 rounded-l-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                                -
+                                            </button>
+                                            <span class="w-10 h-8 flex items-center justify-center bg-gray-100 font-medium text-sm">
+                                                ${product.quantity}
+                                            </span>
+                                            <button onclick="incrementQuantity(${category.id}, ${product.id})"
+                                                    class="w-8 h-8 rounded-r-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                                +
+                                            </button>
+                                        </div>
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium ${status.color}">
+                                            ${status.label}
+                                        </span>
+                                        <button onclick="deleteProduct(${category.id}, ${product.id})"
+                                                class="text-gray-400 hover:text-red-500 text-lg">
+                                            &times;
+                                        </button>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                            ${category.products.length === 0 ? '<p class="text-gray-400 text-sm py-2">No products yet</p>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTaskLists() {
+            const container = document.getElementById('task-lists-container');
+            if (state.taskLists.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8 bg-white rounded-lg shadow">No task lists yet. Create your first one above!</p>';
+                return;
+            }
+
+            container.innerHTML = state.taskLists.map(taskList => {
+                const progress = getTaskListProgress(taskList);
+                return `
+                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
+                    <div class="bg-blue-600 text-white px-4 py-3">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold">${taskList.name}</h3>
+                            <div class="flex items-center gap-3">
+                                <span class="text-blue-200 text-sm">${progress.completed}/${progress.total}</span>
+                                <button onclick="deleteTaskList(${taskList.id})" class="text-red-300 hover:text-red-100 text-sm">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                        ${progress.total > 0 ? `
+                        <div class="mt-2 bg-blue-800 rounded-full h-2">
+                            <div class="bg-white rounded-full h-2 transition-all" style="width: ${progress.percent}%"></div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="p-3">
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="task-input-${taskList.id}" placeholder="Add task..."
+                                   class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   onkeypress="if(event.key==='Enter')addTask(${taskList.id})">
+                            <button onclick="addTask(${taskList.id})" class="bg-gray-200 px-3 py-2 rounded-lg text-sm hover:bg-gray-300">
+                                +
+                            </button>
+                        </div>
+                        <div class="divide-y">
+                            ${taskList.tasks.map(task => `
+                                <div class="flex items-center gap-3 py-2 ${task.done ? 'opacity-60' : ''}">
+                                    <input type="checkbox" ${task.done ? 'checked' : ''}
+                                           onchange="toggleTask(${taskList.id}, ${task.id})"
+                                           class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
+                                    <span class="flex-1 ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                                    <button onclick="deleteTask(${taskList.id}, ${task.id})" class="text-gray-400 hover:text-red-500 text-lg">
+                                        &times;
+                                    </button>
+                                </div>
+                            `).join('')}
+                            ${taskList.tasks.length === 0 ? '<p class="text-gray-400 text-sm py-2">No tasks yet</p>' : ''}
+                        </div>
+                        ${taskList.tasks.length > 0 ? `
+                        <div class="flex gap-2 mt-3 pt-3 border-t">
+                            <button onclick="clearCompletedTasks(${taskList.id})" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-200">
+                                Clear Done
+                            </button>
+                            <button onclick="shareTaskList(${taskList.id})" class="flex-1 bg-emerald-100 text-emerald-700 py-2 rounded-lg text-sm hover:bg-emerald-200">
+                                Share
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderAll() {
+            renderCategories();
+            renderTaskLists();
+        }
+
+        // Handle Enter key for inputs
+        document.getElementById('new-category').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addCategory();
+        });
+
+        document.getElementById('new-task-list').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTaskList();
+        });
+
+        // Close modals on backdrop click
+        document.getElementById('order-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'order-modal') closeModal();
+        });
+
+        document.getElementById('share-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'share-modal') closeShareModal();
+        });
+
+        // Initialize
+        loadState();
+    </script>
+</body>
+</html>
