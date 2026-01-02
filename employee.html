@@ -214,16 +214,20 @@
 
         // Quantity Functions (employees can adjust quantity)
         function incrementQuantity(categoryId, productId) {
-            const category = state.categories.find(c => c.id === categoryId);
-            const product = category.products.find(p => p.id === productId);
+            const category = state.categories.find(c => c.id == categoryId);
+            if (!category) return;
+            const product = category.products.find(p => p.id == productId);
+            if (!product) return;
             product.quantity++;
             saveState();
             renderCategories();
         }
 
         function decrementQuantity(categoryId, productId) {
-            const category = state.categories.find(c => c.id === categoryId);
-            const product = category.products.find(p => p.id === productId);
+            const category = state.categories.find(c => c.id == categoryId);
+            if (!category) return;
+            const product = category.products.find(p => p.id == productId);
+            if (!product) return;
             if (product.quantity > 0) {
                 product.quantity--;
             }
