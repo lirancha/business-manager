@@ -181,9 +181,8 @@
 
         // Stock Status Helper
         function getStockStatus(quantity) {
-            if (quantity === 0) return { label: 'Missing', color: 'bg-red-100 text-red-700' };
-            if (quantity <= 2) return { label: 'Low', color: 'bg-amber-100 text-amber-700' };
-            return { label: 'In Stock', color: 'bg-green-100 text-green-700' };
+            if (quantity === 0) return { label: 'OK', color: 'bg-green-100 text-green-700' };
+            return { label: 'Need ' + quantity, color: 'bg-red-100 text-red-700' };
         }
 
         // Quantity Functions (employees can adjust quantity)
@@ -249,19 +248,19 @@
                 }
             });
 
-            // Add summary of low/missing items
-            const lowItems = [];
+            // Add summary of items that need ordering
+            const orderItems = [];
             state.categories.forEach(category => {
                 category.products.forEach(product => {
-                    if (product.quantity <= 2) {
-                        lowItems.push(`${product.name} (${product.quantity})`);
+                    if (product.quantity > 0) {
+                        orderItems.push(`${product.name} (${product.quantity})`);
                     }
                 });
             });
 
-            if (lowItems.length > 0) {
-                inventoryText += `\n${'═'.repeat(25)}\nNEEDS RESTOCK:\n`;
-                lowItems.forEach(item => {
+            if (orderItems.length > 0) {
+                inventoryText += `\n${'═'.repeat(25)}\nNEEDS ORDERING:\n`;
+                orderItems.forEach(item => {
                     inventoryText += `- ${item}\n`;
                 });
             }
@@ -391,10 +390,10 @@
                         <div class="divide-y">
                             ${category.products.map(product => {
                                 const status = getStockStatus(product.quantity);
-                                const isLowOrMissing = product.quantity <= 2;
+                                const needsOrder = product.quantity > 0;
                                 return `
                                 <div class="flex items-center justify-between py-2">
-                                    <span class="${isLowOrMissing ? 'text-red-500 font-medium' : ''}">${product.name}</span>
+                                    <span class="${needsOrder ? 'text-red-500 font-medium' : ''}">${product.name}</span>
                                     <div class="flex items-center gap-2">
                                         <div class="flex items-center">
                                             <button onclick="decrementQuantity(${category.id}, ${product.id})"

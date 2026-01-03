@@ -259,7 +259,7 @@
             category.products.push({
                 id: Date.now(),
                 name: name,
-                quantity: 5
+                quantity: 0
             });
             input.value = '';
             saveState();
@@ -285,9 +285,8 @@
         }
 
         function getStockStatus(quantity) {
-            if (quantity === 0) return { label: 'Missing', color: 'bg-red-100 text-red-700' };
-            if (quantity <= 2) return { label: 'Low', color: 'bg-amber-100 text-amber-700' };
-            return { label: 'In Stock', color: 'bg-green-100 text-green-700' };
+            if (quantity === 0) return { label: 'OK', color: 'bg-green-100 text-green-700' };
+            return { label: 'Need ' + quantity, color: 'bg-red-100 text-red-700' };
         }
 
         function deleteProduct(categoryId, productId) {
@@ -370,31 +369,30 @@
 
         // Order Generation
         function generateOrder() {
-            const missingItems = [];
+            const itemsToOrder = [];
             state.categories.forEach(category => {
-                const lowStock = category.products.filter(p => p.quantity <= 2);
-                if (lowStock.length > 0) {
-                    missingItems.push({
+                const needOrder = category.products.filter(p => p.quantity > 0);
+                if (needOrder.length > 0) {
+                    itemsToOrder.push({
                         category: category.name,
-                        items: lowStock.map(p => ({
+                        items: needOrder.map(p => ({
                             name: p.name,
-                            quantity: p.quantity,
-                            status: p.quantity === 0 ? 'MISSING' : 'LOW'
+                            quantity: p.quantity
                         }))
                     });
                 }
             });
 
-            if (missingItems.length === 0) {
-                alert('No missing or low stock items! All inventory is well stocked.');
+            if (itemsToOrder.length === 0) {
+                alert('No items to order! All inventory is OK.');
                 return;
             }
 
             let orderText = `ORDER LIST\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
-            missingItems.forEach(group => {
+            itemsToOrder.forEach(group => {
                 orderText += `${group.category.toUpperCase()}\n`;
                 group.items.forEach(item => {
-                    orderText += `  - ${item.name} (${item.status}, ${item.quantity} left)\n`;
+                    orderText += `  - ${item.name} x${item.quantity}\n`;
                 });
                 orderText += '\n';
             });
@@ -553,10 +551,10 @@
                         <div class="divide-y">
                             ${category.products.map(product => {
                                 const status = getStockStatus(product.quantity);
-                                const isLowOrMissing = product.quantity <= 2;
+                                const needsOrder = product.quantity > 0;
                                 return `
                                 <div class="flex items-center justify-between py-2">
-                                    <span class="${isLowOrMissing ? 'text-red-500 font-medium' : ''}">${product.name}</span>
+                                    <span class="${needsOrder ? 'text-red-500 font-medium' : ''}">${product.name}</span>
                                     <div class="flex items-center gap-2">
                                         <div class="flex items-center">
                                             <button onclick="decrementQuantity(${category.id}, ${product.id})"
