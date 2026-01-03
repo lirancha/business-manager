@@ -170,6 +170,9 @@
             taskLists: []
         };
 
+        // UI State (not saved to Firebase)
+        let expandedCategories = [];
+
         // Load from Firestore and listen for real-time updates
         function loadState() {
             db.collection('business').doc('data').onSnapshot((doc) => {
@@ -227,6 +230,16 @@
         }
 
         // Category Functions
+        function toggleCategory(categoryId) {
+            const index = expandedCategories.indexOf(categoryId);
+            if (index === -1) {
+                expandedCategories.push(categoryId);
+            } else {
+                expandedCategories.splice(index, 1);
+            }
+            renderCategories();
+        }
+
         function addCategory() {
             const input = document.getElementById('new-category');
             const name = input.value.trim();
@@ -539,11 +552,18 @@
         // Render Functions
         function renderCategories() {
             const container = document.getElementById('categories-container');
-            container.innerHTML = state.categories.map(category => `
+            container.innerHTML = state.categories.map(category => {
+                const isExpanded = expandedCategories.includes(category.id);
+                const itemsNeedingOrder = category.products.filter(p => p.quantity > 0).length;
+                return `
                 <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
-                    <div class="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
-                        <h3 class="font-bold">${category.name}</h3>
-                        <div class="flex items-center gap-3">
+                    <div class="bg-gray-800 text-white px-4 py-3 flex justify-between items-center cursor-pointer" onclick="toggleCategory(${category.id})">
+                        <div class="flex items-center gap-2">
+                            <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
+                            <h3 class="font-bold">${category.name}</h3>
+                            ${itemsNeedingOrder > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">${itemsNeedingOrder}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-3" onclick="event.stopPropagation()">
                             <button onclick="resetCategory(${category.id})" class="text-green-300 hover:text-green-100 text-sm">
                                 Reset All
                             </button>
@@ -552,7 +572,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="p-3">
+                    <div class="${isExpanded ? '' : 'hidden'} p-3">
                         <div class="flex gap-2 mb-3">
                             <input type="text" id="product-input-${category.id}" placeholder="Add product..."
                                    class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -596,7 +616,7 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function renderTaskLists() {
