@@ -16,7 +16,18 @@
     <!-- Header -->
     <header class="bg-white shadow-sm sticky top-0 z-10">
         <div class="max-w-lg mx-auto px-4 py-3">
-            <h1 class="text-xl font-bold text-gray-800 text-center">Zucca Café</h1>
+            <h1 id="location-name" class="text-xl font-bold text-gray-800 text-center">Zucca Café</h1>
+            <!-- Location Switcher -->
+            <div class="flex justify-center gap-2 mt-2">
+                <button class="location-btn px-3 py-1 rounded-full text-sm font-medium bg-blue-600 text-white"
+                        data-location="isgav" onclick="switchLocation('isgav')">
+                    Isgav
+                </button>
+                <button class="location-btn px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-700"
+                        data-location="frankfurt" onclick="switchLocation('frankfurt')">
+                    Frankfurt
+                </button>
+            </div>
         </div>
         <!-- Tabs -->
         <div class="max-w-lg mx-auto flex border-b">
@@ -164,6 +175,14 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // Location Configuration
+        const locations = [
+            { id: 'isgav', name: 'Zucca Isgav' },
+            { id: 'frankfurt', name: 'Zucca Frankfurt' }
+        ];
+        let currentLocation = localStorage.getItem('currentLocation') || 'isgav';
+        let unsubscribe = null;
+
         // Data State
         let state = {
             categories: [],
@@ -174,9 +193,31 @@
         let expandedCategories = [];
         let expandedTaskLists = [];
 
+        // Switch Location
+        function switchLocation(locationId) {
+            if (unsubscribe) unsubscribe();
+            currentLocation = locationId;
+            localStorage.setItem('currentLocation', locationId);
+            expandedCategories = [];
+            expandedTaskLists = [];
+            updateLocationUI();
+            loadState();
+        }
+
+        function updateLocationUI() {
+            const locationName = locations.find(l => l.id === currentLocation)?.name || 'Zucca';
+            document.getElementById('location-name').textContent = locationName;
+            document.querySelectorAll('.location-btn').forEach(btn => {
+                btn.classList.toggle('bg-blue-600', btn.dataset.location === currentLocation);
+                btn.classList.toggle('text-white', btn.dataset.location === currentLocation);
+                btn.classList.toggle('bg-gray-200', btn.dataset.location !== currentLocation);
+                btn.classList.toggle('text-gray-700', btn.dataset.location !== currentLocation);
+            });
+        }
+
         // Load from Firestore and listen for real-time updates
         function loadState() {
-            db.collection('business').doc('data').onSnapshot((doc) => {
+            unsubscribe = db.collection('locations').doc(currentLocation).onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     state.categories = data.categories || [];
@@ -197,7 +238,7 @@
 
         // Save to Firestore
         function saveState() {
-            db.collection('business').doc('data').set({
+            db.collection('locations').doc(currentLocation).set({
                 categories: state.categories,
                 taskLists: state.taskLists
             }).catch((error) => {
@@ -814,6 +855,7 @@
         });
 
         // Initialize
+        updateLocationUI();
         loadState();
     </script>
 </body>
