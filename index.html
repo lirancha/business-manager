@@ -28,12 +28,6 @@
                     Frankfurt
                 </button>
             </div>
-            <!-- TEMPORARY: Migration Button -->
-            <div class="flex justify-center mt-2">
-                <button onclick="migrateOldData()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                    ⚠️ Migrate Old Data to Isgav
-                </button>
-            </div>
         </div>
         <!-- Tabs -->
         <div class="max-w-lg mx-auto flex border-b">
@@ -200,29 +194,6 @@
         let expandedTaskLists = [];
 
         // Switch Location
-        // TEMPORARY: Migrate old data from business/data to locations/isgav
-        function migrateOldData() {
-            if (!confirm('This will copy your old data to Isgav location. Continue?')) return;
-            db.collection('business').doc('data').get().then((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    db.collection('locations').doc('isgav').set({
-                        categories: data.categories || [],
-                        taskLists: data.taskLists || []
-                    }).then(() => {
-                        alert('Data migrated successfully! Your inventory and tasks are restored.');
-                        location.reload();
-                    }).catch((err) => {
-                        alert('Error saving: ' + err.message);
-                    });
-                } else {
-                    alert('No old data found at business/data');
-                }
-            }).catch((err) => {
-                alert('Error reading old data: ' + err.message);
-            });
-        }
-
         function switchLocation(locationId) {
             if (unsubscribe) unsubscribe();
             currentLocation = locationId;
