@@ -477,6 +477,26 @@
             document.getElementById('order-modal').classList.remove('hidden');
         }
 
+        function generateCategoryOrder(categoryId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+
+            const needOrder = category.products.filter(p => p.quantity > 0);
+            if (needOrder.length === 0) {
+                alert(`No items to order from ${category.name}!`);
+                return;
+            }
+
+            let orderText = `ORDER LIST - ${category.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
+            needOrder.forEach(item => {
+                const unitLabel = (item.unit || 'item') === 'package' ? 'pkg' : 'item';
+                orderText += `  - ${item.name} x${item.quantity} (${unitLabel})\n`;
+            });
+
+            document.getElementById('order-text').textContent = orderText;
+            document.getElementById('order-modal').classList.remove('hidden');
+        }
+
         function closeModal() {
             document.getElementById('order-modal').classList.add('hidden');
         }
@@ -621,6 +641,9 @@
                         <div class="flex items-center gap-3" onclick="event.stopPropagation()">
                             <button onclick="resetCategory(${category.id})" class="text-green-300 hover:text-green-100 text-sm">
                                 Reset All
+                            </button>
+                            <button onclick="generateCategoryOrder(${category.id})" class="text-amber-300 hover:text-amber-100 text-sm">
+                                Order
                             </button>
                             <button onclick="deleteCategory(${category.id})" class="text-red-300 hover:text-red-100 text-sm">
                                 Delete
