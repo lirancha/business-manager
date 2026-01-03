@@ -263,6 +263,15 @@
             renderTaskLists();
         }
 
+        function resetAllTasks(listId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (taskList) {
+                taskList.tasks.forEach(t => t.done = false);
+                saveState();
+                renderTaskLists();
+            }
+        }
+
         function getTaskListProgress(taskList) {
             if (taskList.tasks.length === 0) return { completed: 0, total: 0, percent: 0 };
             const completed = taskList.tasks.filter(t => t.done).length;
@@ -518,8 +527,11 @@
                             ${taskList.tasks.length === 0 ? '<p class="text-gray-400 text-sm py-2">No tasks</p>' : ''}
                         </div>
                         ${taskList.tasks.length > 0 ? `
-                        <div class="mt-3 pt-3 border-t">
-                            <button onclick="shareTaskList(${taskList.id})" class="w-full bg-emerald-100 text-emerald-700 py-2 rounded-lg text-sm hover:bg-emerald-200">
+                        <div class="mt-3 pt-3 border-t flex gap-2">
+                            <button onclick="resetAllTasks(${taskList.id})" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-200">
+                                Reset All
+                            </button>
+                            <button onclick="shareTaskList(${taskList.id})" class="flex-1 bg-emerald-100 text-emerald-700 py-2 rounded-lg text-sm hover:bg-emerald-200">
                                 Share This List
                             </button>
                         </div>
