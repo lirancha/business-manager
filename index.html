@@ -411,6 +411,15 @@
             renderTaskLists();
         }
 
+        function resetAllTasks(listId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (taskList) {
+                taskList.tasks.forEach(t => t.done = false);
+                saveState();
+                renderTaskLists();
+            }
+        }
+
         function getTaskListProgress(taskList) {
             if (taskList.tasks.length === 0) return { completed: 0, total: 0, percent: 0 };
             const completed = taskList.tasks.filter(t => t.done).length;
@@ -721,6 +730,9 @@
                         <div class="flex gap-2 mt-3 pt-3 border-t">
                             <button onclick="clearCompletedTasks(${taskList.id})" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-200">
                                 Clear Done
+                            </button>
+                            <button onclick="resetAllTasks(${taskList.id})" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-200">
+                                Reset All
                             </button>
                             <button onclick="shareTaskList(${taskList.id})" class="flex-1 bg-emerald-100 text-emerald-700 py-2 rounded-lg text-sm hover:bg-emerald-200">
                                 Share
