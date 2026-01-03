@@ -129,6 +129,18 @@
         let expandedCategories = [];
         let expandedTaskLists = [];
 
+        // Color Options for Task Lists (read-only in employee view)
+        const taskListColors = {
+            blue: { bg: 'bg-blue-600', progress: 'bg-blue-800', text: 'text-blue-200' },
+            green: { bg: 'bg-green-600', progress: 'bg-green-800', text: 'text-green-200' },
+            red: { bg: 'bg-red-600', progress: 'bg-red-800', text: 'text-red-200' },
+            orange: { bg: 'bg-orange-500', progress: 'bg-orange-700', text: 'text-orange-200' },
+            purple: { bg: 'bg-purple-600', progress: 'bg-purple-800', text: 'text-purple-200' },
+            pink: { bg: 'bg-pink-500', progress: 'bg-pink-700', text: 'text-pink-200' },
+            teal: { bg: 'bg-teal-600', progress: 'bg-teal-800', text: 'text-teal-200' },
+            gray: { bg: 'bg-gray-600', progress: 'bg-gray-800', text: 'text-gray-300' }
+        };
+
         // Load from Firestore and listen for real-time updates
         function loadState() {
             db.collection('business').doc('data').onSnapshot((doc) => {
@@ -476,18 +488,19 @@
             container.innerHTML = state.taskLists.map(taskList => {
                 const progress = getTaskListProgress(taskList);
                 const isExpanded = expandedTaskLists.includes(taskList.id);
+                const color = taskListColors[taskList.color] || taskListColors.blue;
                 return `
                 <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
-                    <div class="bg-blue-600 text-white px-4 py-3 cursor-pointer" onclick="toggleTaskList(${taskList.id})">
+                    <div class="${color.bg} text-white px-4 py-3 cursor-pointer" onclick="toggleTaskList(${taskList.id})">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
                                 <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
                                 <h3 class="font-bold">${taskList.name}</h3>
                             </div>
-                            <span class="text-blue-200 text-sm">${progress.completed}/${progress.total}</span>
+                            <span class="${color.text} text-sm">${progress.completed}/${progress.total}</span>
                         </div>
                         ${progress.total > 0 ? `
-                        <div class="mt-2 bg-blue-800 rounded-full h-2">
+                        <div class="mt-2 ${color.progress} rounded-full h-2">
                             <div class="bg-white rounded-full h-2 transition-all" style="width: ${progress.percent}%"></div>
                         </div>
                         ` : ''}

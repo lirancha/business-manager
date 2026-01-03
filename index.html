@@ -318,6 +318,18 @@
             renderCategories();
         }
 
+        // Color Options for Task Lists
+        const taskListColors = {
+            blue: { bg: 'bg-blue-600', progress: 'bg-blue-800', text: 'text-blue-200' },
+            green: { bg: 'bg-green-600', progress: 'bg-green-800', text: 'text-green-200' },
+            red: { bg: 'bg-red-600', progress: 'bg-red-800', text: 'text-red-200' },
+            orange: { bg: 'bg-orange-500', progress: 'bg-orange-700', text: 'text-orange-200' },
+            purple: { bg: 'bg-purple-600', progress: 'bg-purple-800', text: 'text-purple-200' },
+            pink: { bg: 'bg-pink-500', progress: 'bg-pink-700', text: 'text-pink-200' },
+            teal: { bg: 'bg-teal-600', progress: 'bg-teal-800', text: 'text-teal-200' },
+            gray: { bg: 'bg-gray-600', progress: 'bg-gray-800', text: 'text-gray-300' }
+        };
+
         // Task List Functions
         function toggleTaskList(listId) {
             const index = expandedTaskLists.indexOf(listId);
@@ -337,6 +349,7 @@
             state.taskLists.push({
                 id: Date.now(),
                 name: name,
+                color: 'blue',
                 tasks: []
             });
             input.value = '';
@@ -349,6 +362,15 @@
             state.taskLists = state.taskLists.filter(l => l.id !== listId);
             saveState();
             renderTaskLists();
+        }
+
+        function changeTaskListColor(listId, color) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (taskList) {
+                taskList.color = color;
+                saveState();
+                renderTaskLists();
+            }
         }
 
         function addTask(listId) {
@@ -640,28 +662,39 @@
             container.innerHTML = state.taskLists.map(taskList => {
                 const progress = getTaskListProgress(taskList);
                 const isExpanded = expandedTaskLists.includes(taskList.id);
+                const color = taskListColors[taskList.color] || taskListColors.blue;
+                const colorPickerHtml = Object.keys(taskListColors).map(c =>
+                    `<button onclick="changeTaskListColor(${taskList.id}, '${c}')"
+                             class="w-5 h-5 rounded-full ${taskListColors[c].bg} ${taskList.color === c ? 'ring-2 ring-white ring-offset-1' : 'opacity-70 hover:opacity-100'}"
+                             title="${c}"></button>`
+                ).join('');
                 return `
                 <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
-                    <div class="bg-blue-600 text-white px-4 py-3 cursor-pointer" onclick="toggleTaskList(${taskList.id})">
+                    <div class="${color.bg} text-white px-4 py-3 cursor-pointer" onclick="toggleTaskList(${taskList.id})">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2">
                                 <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
                                 <h3 class="font-bold">${taskList.name}</h3>
                             </div>
                             <div class="flex items-center gap-3" onclick="event.stopPropagation()">
-                                <span class="text-blue-200 text-sm">${progress.completed}/${progress.total}</span>
+                                <span class="${color.text} text-sm">${progress.completed}/${progress.total}</span>
                                 <button onclick="deleteTaskList(${taskList.id})" class="text-red-300 hover:text-red-100 text-sm">
                                     Delete
                                 </button>
                             </div>
                         </div>
                         ${progress.total > 0 ? `
-                        <div class="mt-2 bg-blue-800 rounded-full h-2">
+                        <div class="mt-2 ${color.progress} rounded-full h-2">
                             <div class="bg-white rounded-full h-2 transition-all" style="width: ${progress.percent}%"></div>
                         </div>
                         ` : ''}
                     </div>
                     <div class="${isExpanded ? '' : 'hidden'} p-3">
+                        <!-- Color Picker -->
+                        <div class="flex items-center gap-2 mb-3 pb-3 border-b">
+                            <span class="text-xs text-gray-500">Color:</span>
+                            <div class="flex gap-1">${colorPickerHtml}</div>
+                        </div>
                         <div class="flex gap-2 mb-3">
                             <input type="text" id="task-input-${taskList.id}" placeholder="Add task..."
                                    class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
