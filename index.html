@@ -296,6 +296,14 @@
             renderCategories();
         }
 
+        function resetCategory(categoryId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+            category.products.forEach(p => p.quantity = 0);
+            saveState();
+            renderCategories();
+        }
+
         // Task List Functions
         function addTaskList() {
             const input = document.getElementById('new-task-list');
@@ -535,9 +543,14 @@
                 <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
                     <div class="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
                         <h3 class="font-bold">${category.name}</h3>
-                        <button onclick="deleteCategory(${category.id})" class="text-red-300 hover:text-red-100 text-sm">
-                            Delete
-                        </button>
+                        <div class="flex items-center gap-3">
+                            <button onclick="resetCategory(${category.id})" class="text-green-300 hover:text-green-100 text-sm">
+                                Reset All
+                            </button>
+                            <button onclick="deleteCategory(${category.id})" class="text-red-300 hover:text-red-100 text-sm">
+                                Delete
+                            </button>
+                        </div>
                     </div>
                     <div class="p-3">
                         <div class="flex gap-2 mb-3">
