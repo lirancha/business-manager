@@ -456,13 +456,6 @@
             renderTaskLists();
         }
 
-        function clearCompletedTasks(listId) {
-            const taskList = state.taskLists.find(l => l.id === listId);
-            taskList.tasks = taskList.tasks.filter(t => !t.done);
-            saveState();
-            renderTaskLists();
-        }
-
         function resetAllTasks(listId) {
             const taskList = state.taskLists.find(l => l.id === listId);
             if (taskList) {
@@ -811,9 +804,6 @@
                         </div>
                         ${taskList.tasks.length > 0 ? `
                         <div class="flex gap-2 mt-3 pt-3 border-t">
-                            <button onclick="clearCompletedTasks(${taskList.id})" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-200">
-                                Clear Done
-                            </button>
                             <button onclick="resetAllTasks(${taskList.id})" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-200">
                                 Reset All
                             </button>
