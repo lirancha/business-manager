@@ -10,6 +10,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
+        .task-item { transition: transform 0.15s, background-color 0.15s, box-shadow 0.15s; }
+        .drag-handle { touch-action: none; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -468,7 +470,7 @@
             }
         }
 
-        // Drag and drop reorder
+        // Drag and drop reorder (desktop)
         let draggedTask = null;
         let draggedListId = null;
 
@@ -504,23 +506,98 @@
             }
         }
 
-        // Move task up/down with buttons (mobile-friendly alternative)
-        function moveTaskUp(listId, taskId) {
-            const taskList = state.taskLists.find(l => l.id === listId);
-            const index = taskList.tasks.findIndex(t => t.id === taskId);
-            if (index > 0) {
-                [taskList.tasks[index - 1], taskList.tasks[index]] = [taskList.tasks[index], taskList.tasks[index - 1]];
-                saveState();
-                renderTaskLists();
+        // Touch drag and drop (mobile)
+        let touchDragElement = null;
+        let touchDragListId = null;
+        let touchDragTaskId = null;
+        let touchStartY = 0;
+        let touchTimeout = null;
+        let isDragging = false;
+
+        function initTouchDrag() {
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd);
+        }
+
+        function handleTouchStart(e) {
+            const handle = e.target.closest('.drag-handle');
+            if (!handle) return;
+
+            const taskItem = handle.closest('.task-item');
+            if (!taskItem) return;
+
+            touchDragListId = parseInt(taskItem.dataset.listId);
+            touchDragTaskId = parseInt(taskItem.dataset.taskId);
+            touchDragElement = taskItem;
+            touchStartY = e.touches[0].clientY;
+
+            // Start drag immediately when touching the handle
+            touchTimeout = setTimeout(() => {
+                isDragging = true;
+                taskItem.classList.add('bg-blue-50', 'shadow-lg', 'scale-105', 'z-50');
+                navigator.vibrate && navigator.vibrate(50);
+            }, 150);
+        }
+
+        function handleTouchMove(e) {
+            if (!touchDragElement || !isDragging) {
+                if (touchTimeout && Math.abs(e.touches[0].clientY - touchStartY) > 10) {
+                    clearTimeout(touchTimeout);
+                    touchTimeout = null;
+                }
+                return;
+            }
+
+            e.preventDefault();
+
+            const touchY = e.touches[0].clientY;
+            const container = touchDragElement.closest('.task-list-container');
+            const taskItems = Array.from(container.querySelectorAll('.task-item'));
+
+            for (const item of taskItems) {
+                if (item === touchDragElement) continue;
+
+                const rect = item.getBoundingClientRect();
+                const middle = rect.top + rect.height / 2;
+
+                if (touchY < middle && touchY > rect.top - 20) {
+                    const targetTaskId = parseInt(item.dataset.taskId);
+                    reorderTasks(touchDragListId, touchDragTaskId, targetTaskId);
+                    break;
+                } else if (touchY > middle && touchY < rect.bottom + 20) {
+                    const targetTaskId = parseInt(item.dataset.taskId);
+                    reorderTasks(touchDragListId, touchDragTaskId, targetTaskId);
+                    break;
+                }
             }
         }
 
-        function moveTaskDown(listId, taskId) {
-            const taskList = state.taskLists.find(l => l.id === listId);
-            const index = taskList.tasks.findIndex(t => t.id === taskId);
-            if (index < taskList.tasks.length - 1) {
-                [taskList.tasks[index], taskList.tasks[index + 1]] = [taskList.tasks[index + 1], taskList.tasks[index]];
+        function handleTouchEnd(e) {
+            clearTimeout(touchTimeout);
+            touchTimeout = null;
+
+            if (touchDragElement && isDragging) {
+                touchDragElement.classList.remove('bg-blue-50', 'shadow-lg', 'scale-105', 'z-50');
                 saveState();
+            }
+
+            touchDragElement = null;
+            touchDragListId = null;
+            touchDragTaskId = null;
+            isDragging = false;
+        }
+
+        function reorderTasks(listId, fromTaskId, toTaskId) {
+            if (fromTaskId === toTaskId) return;
+
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const fromIndex = taskList.tasks.findIndex(t => t.id === fromTaskId);
+            const toIndex = taskList.tasks.findIndex(t => t.id === toTaskId);
+
+            if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+                const [removed] = taskList.tasks.splice(fromIndex, 1);
+                taskList.tasks.splice(toIndex, 0, removed);
                 renderTaskLists();
             }
         }
@@ -857,21 +934,17 @@
                                 +
                             </button>
                         </div>
-                        <div class="divide-y">
+                        <div class="divide-y task-list-container" data-list-id="${taskList.id}">
                             ${taskList.tasks.map((task, index) => `
-                                <div class="task-item flex items-center gap-2 py-2 ${task.done ? 'opacity-60' : ''}"
+                                <div class="task-item flex items-center gap-3 py-3 ${task.done ? 'opacity-60' : ''} touch-none select-none"
+                                     data-task-id="${task.id}"
+                                     data-list-id="${taskList.id}"
                                      draggable="true"
                                      ondragstart="handleDragStart(event, ${taskList.id}, ${task.id})"
                                      ondragend="handleDragEnd(event)"
                                      ondragover="handleDragOver(event)"
                                      ondrop="handleDrop(event, ${taskList.id}, ${task.id})">
-                                    <!-- Reorder buttons -->
-                                    <div class="flex flex-col">
-                                        <button onclick="moveTaskUp(${taskList.id}, ${task.id})"
-                                                class="text-gray-400 hover:text-gray-600 text-xs leading-none ${index === 0 ? 'invisible' : ''}">▲</button>
-                                        <button onclick="moveTaskDown(${taskList.id}, ${task.id})"
-                                                class="text-gray-400 hover:text-gray-600 text-xs leading-none ${index === taskList.tasks.length - 1 ? 'invisible' : ''}">▼</button>
-                                    </div>
+                                    <span class="drag-handle text-gray-300 cursor-grab text-lg">☰</span>
                                     <input type="checkbox" ${task.done ? 'checked' : ''}
                                            onchange="toggleTask(${taskList.id}, ${task.id})"
                                            class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
@@ -930,6 +1003,7 @@
         // Initialize
         updateLocationUI();
         loadState();
+        initTouchDrag();
     </script>
 </body>
 </html>
