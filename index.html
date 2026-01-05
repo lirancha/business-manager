@@ -456,6 +456,75 @@
             renderTaskLists();
         }
 
+        // Edit task text
+        function editTask(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const task = taskList.tasks.find(t => t.id === taskId);
+            const newText = prompt('Edit task:', task.text);
+            if (newText !== null && newText.trim()) {
+                task.text = newText.trim();
+                saveState();
+                renderTaskLists();
+            }
+        }
+
+        // Drag and drop reorder
+        let draggedTask = null;
+        let draggedListId = null;
+
+        function handleDragStart(e, listId, taskId) {
+            draggedTask = taskId;
+            draggedListId = listId;
+            e.target.closest('.task-item').classList.add('opacity-50');
+        }
+
+        function handleDragEnd(e) {
+            e.target.closest('.task-item')?.classList.remove('opacity-50');
+            draggedTask = null;
+            draggedListId = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e, listId, targetTaskId) {
+            e.preventDefault();
+            if (draggedTask === null || draggedListId !== listId || draggedTask === targetTaskId) return;
+
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const fromIndex = taskList.tasks.findIndex(t => t.id === draggedTask);
+            const toIndex = taskList.tasks.findIndex(t => t.id === targetTaskId);
+
+            if (fromIndex !== -1 && toIndex !== -1) {
+                const [removed] = taskList.tasks.splice(fromIndex, 1);
+                taskList.tasks.splice(toIndex, 0, removed);
+                saveState();
+                renderTaskLists();
+            }
+        }
+
+        // Move task up/down with buttons (mobile-friendly alternative)
+        function moveTaskUp(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const index = taskList.tasks.findIndex(t => t.id === taskId);
+            if (index > 0) {
+                [taskList.tasks[index - 1], taskList.tasks[index]] = [taskList.tasks[index], taskList.tasks[index - 1]];
+                saveState();
+                renderTaskLists();
+            }
+        }
+
+        function moveTaskDown(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const index = taskList.tasks.findIndex(t => t.id === taskId);
+            if (index < taskList.tasks.length - 1) {
+                [taskList.tasks[index], taskList.tasks[index + 1]] = [taskList.tasks[index + 1], taskList.tasks[index]];
+                saveState();
+                renderTaskLists();
+            }
+        }
+
         function resetAllTasks(listId) {
             const taskList = state.taskLists.find(l => l.id === listId);
             if (taskList) {
@@ -789,12 +858,26 @@
                             </button>
                         </div>
                         <div class="divide-y">
-                            ${taskList.tasks.map(task => `
-                                <div class="flex items-center gap-3 py-2 ${task.done ? 'opacity-60' : ''}">
+                            ${taskList.tasks.map((task, index) => `
+                                <div class="task-item flex items-center gap-2 py-2 ${task.done ? 'opacity-60' : ''}"
+                                     draggable="true"
+                                     ondragstart="handleDragStart(event, ${taskList.id}, ${task.id})"
+                                     ondragend="handleDragEnd(event)"
+                                     ondragover="handleDragOver(event)"
+                                     ondrop="handleDrop(event, ${taskList.id}, ${task.id})">
+                                    <!-- Reorder buttons -->
+                                    <div class="flex flex-col">
+                                        <button onclick="moveTaskUp(${taskList.id}, ${task.id})"
+                                                class="text-gray-400 hover:text-gray-600 text-xs leading-none ${index === 0 ? 'invisible' : ''}">▲</button>
+                                        <button onclick="moveTaskDown(${taskList.id}, ${task.id})"
+                                                class="text-gray-400 hover:text-gray-600 text-xs leading-none ${index === taskList.tasks.length - 1 ? 'invisible' : ''}">▼</button>
+                                    </div>
                                     <input type="checkbox" ${task.done ? 'checked' : ''}
                                            onchange="toggleTask(${taskList.id}, ${task.id})"
                                            class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
-                                    <span class="flex-1 ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                                    <span onclick="editTask(${taskList.id}, ${task.id})"
+                                          class="flex-1 cursor-pointer hover:text-blue-600 ${task.done ? 'line-through text-gray-400' : ''}"
+                                          title="Click to edit">${task.text}</span>
                                     <button onclick="deleteTask(${taskList.id}, ${task.id})" class="text-gray-400 hover:text-red-500 text-lg">
                                         &times;
                                     </button>
