@@ -9,9 +9,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
+        html, body { overflow-x: hidden; max-width: 100vw; }
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
-        .task-item { transition: transform 0.15s, background-color 0.15s, box-shadow 0.15s; }
-        .drag-handle { touch-action: none; }
+        .task-item { transition: background-color 0.15s, box-shadow 0.15s; }
+        .drag-handle { touch-action: none; -webkit-touch-callout: none; user-select: none; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -535,7 +536,7 @@
             // Start drag immediately when touching the handle
             touchTimeout = setTimeout(() => {
                 isDragging = true;
-                taskItem.classList.add('bg-blue-50', 'shadow-lg', 'scale-105', 'z-50');
+                taskItem.classList.add('bg-blue-50', 'shadow-lg', 'z-50');
                 navigator.vibrate && navigator.vibrate(50);
             }, 150);
         }
@@ -578,7 +579,7 @@
             touchTimeout = null;
 
             if (touchDragElement && isDragging) {
-                touchDragElement.classList.remove('bg-blue-50', 'shadow-lg', 'scale-105', 'z-50');
+                touchDragElement.classList.remove('bg-blue-50', 'shadow-lg', 'z-50');
                 saveState();
             }
 
@@ -936,7 +937,7 @@
                         </div>
                         <div class="divide-y task-list-container" data-list-id="${taskList.id}">
                             ${taskList.tasks.map((task, index) => `
-                                <div class="task-item flex items-center gap-3 py-3 ${task.done ? 'opacity-60' : ''} touch-none select-none"
+                                <div class="task-item flex items-center gap-3 py-3 ${task.done ? 'opacity-60' : ''}"
                                      data-task-id="${task.id}"
                                      data-list-id="${taskList.id}"
                                      draggable="true"
