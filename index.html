@@ -12,7 +12,6 @@
         html, body { overflow-x: hidden; max-width: 100vw; }
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
         .task-item { transition: background-color 0.15s, box-shadow 0.15s; }
-        .drag-handle { touch-action: none; -webkit-touch-callout: none; user-select: none; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -523,25 +522,30 @@
         }
 
         function handleTouchStart(e) {
-            const handle = e.target.closest('.drag-handle');
-            if (!handle) return;
-
-            const taskItem = handle.closest('.task-item');
+            // Check if touch is on a task item
+            const taskItem = e.target.closest('.task-item');
             if (!taskItem) return;
+
+            // Don't start drag if touching text, checkbox, or delete button
+            if (e.target.closest('.task-text') ||
+                e.target.closest('.task-checkbox') ||
+                e.target.closest('.task-delete')) {
+                return;
+            }
 
             touchDragListId = parseInt(taskItem.dataset.listId);
             touchDragTaskId = parseInt(taskItem.dataset.taskId);
             touchDragElement = taskItem;
             touchStartY = e.touches[0].clientY;
 
-            // Start drag after short hold
+            // Start drag after holding for 300ms
             touchTimeout = setTimeout(() => {
                 isDragging = true;
-                taskItem.classList.add('bg-blue-50', 'shadow-lg', 'z-50');
+                taskItem.classList.add('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
                 navigator.vibrate && navigator.vibrate(50);
                 // Only add touchmove listener when actually dragging
                 document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            }, 200);
+            }, 300);
         }
 
         function handleTouchMove(e) {
@@ -578,7 +582,7 @@
                         setTimeout(() => {
                             const newElement = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
                             if (newElement) {
-                                newElement.classList.add('bg-blue-50', 'shadow-lg', 'z-50');
+                                newElement.classList.add('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
                             }
                         }, 0);
                     }
@@ -595,7 +599,7 @@
                 // Find and unhighlight the dragged element
                 const element = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
                 if (element) {
-                    element.classList.remove('bg-blue-50', 'shadow-lg', 'z-50');
+                    element.classList.remove('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
                 }
                 document.removeEventListener('touchmove', handleTouchMove);
                 saveState();
@@ -957,20 +961,13 @@
                             ${taskList.tasks.map((task, index) => `
                                 <div class="task-item flex items-center gap-3 py-3 ${task.done ? 'opacity-60' : ''}"
                                      data-task-id="${task.id}"
-                                     data-list-id="${taskList.id}"
-                                     draggable="true"
-                                     ondragstart="handleDragStart(event, ${taskList.id}, ${task.id})"
-                                     ondragend="handleDragEnd(event)"
-                                     ondragover="handleDragOver(event)"
-                                     ondrop="handleDrop(event, ${taskList.id}, ${task.id})">
-                                    <span class="drag-handle text-gray-300 cursor-grab text-lg">☰</span>
+                                     data-list-id="${taskList.id}">
                                     <input type="checkbox" ${task.done ? 'checked' : ''}
                                            onchange="toggleTask(${taskList.id}, ${task.id})"
-                                           class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
-                                    <span onclick="editTask(${taskList.id}, ${task.id})"
-                                          class="flex-1 cursor-pointer hover:text-blue-600 ${task.done ? 'line-through text-gray-400' : ''}"
-                                          title="Click to edit">${task.text}</span>
-                                    <button onclick="deleteTask(${taskList.id}, ${task.id})" class="text-gray-400 hover:text-red-500 text-lg">
+                                           class="task-checkbox w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
+                                    <span class="task-text flex-1 cursor-pointer hover:text-blue-600 ${task.done ? 'line-through text-gray-400' : ''}"
+                                          onclick="editTask(${taskList.id}, ${task.id})">${task.text}</span>
+                                    <button onclick="deleteTask(${taskList.id}, ${task.id})" class="task-delete text-gray-400 hover:text-red-500 text-lg px-2">
                                         &times;
                                     </button>
                                 </div>
