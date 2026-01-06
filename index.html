@@ -514,22 +514,37 @@
         let touchTimeout = null;
         let isDragging = false;
 
+        let touchStartX = 0;
+
         function initTouchDrag() {
-            // Use passive listeners for touchstart/end (doesn't block scroll)
-            // Only touchmove on drag handles will prevent default
             document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchmove', handleTouchMoveCheck, { passive: true });
             document.addEventListener('touchend', handleTouchEnd, { passive: true });
         }
 
+        // Check if user is scrolling (cancel drag)
+        function handleTouchMoveCheck(e) {
+            if (!touchTimeout) return;
+            if (!touchDragElement) return;
+
+            const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+            const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+
+            // If moved more than 10px, user is scrolling - cancel drag
+            if (moveX > 10 || moveY > 10) {
+                clearTimeout(touchTimeout);
+                touchTimeout = null;
+                touchDragElement = null;
+            }
+        }
+
         function handleTouchStart(e) {
-            // Check if touch is on a task item
+            // Check if touch is on a task item (but not checkbox or delete)
             const taskItem = e.target.closest('.task-item');
             if (!taskItem) return;
 
-            // Don't start drag if touching text, checkbox, or delete button
-            if (e.target.closest('.task-text') ||
-                e.target.closest('.task-checkbox') ||
-                e.target.closest('.task-delete')) {
+            // Don't interfere with checkbox or delete button
+            if (e.target.closest('.task-checkbox') || e.target.closest('.task-delete')) {
                 return;
             }
 
@@ -537,15 +552,16 @@
             touchDragTaskId = parseInt(taskItem.dataset.taskId);
             touchDragElement = taskItem;
             touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
 
-            // Start drag after holding for 300ms
+            // Start drag after holding for 400ms without moving
             touchTimeout = setTimeout(() => {
                 isDragging = true;
                 taskItem.classList.add('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
                 navigator.vibrate && navigator.vibrate(50);
-                // Only add touchmove listener when actually dragging
+                // Now add the drag move listener
                 document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            }, 300);
+            }, 400);
         }
 
         function handleTouchMove(e) {
@@ -592,8 +608,11 @@
         }
 
         function handleTouchEnd(e) {
-            clearTimeout(touchTimeout);
-            touchTimeout = null;
+            // Clear the long-press timer
+            if (touchTimeout) {
+                clearTimeout(touchTimeout);
+                touchTimeout = null;
+            }
 
             if (isDragging && touchDragTaskId) {
                 // Find and unhighlight the dragged element
