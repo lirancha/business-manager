@@ -516,9 +516,10 @@
         let isDragging = false;
 
         function initTouchDrag() {
-            document.addEventListener('touchstart', handleTouchStart, { passive: false });
-            document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            document.addEventListener('touchend', handleTouchEnd);
+            // Use passive listeners for touchstart/end (doesn't block scroll)
+            // Only touchmove on drag handles will prevent default
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchend', handleTouchEnd, { passive: true });
         }
 
         function handleTouchStart(e) {
@@ -533,22 +534,18 @@
             touchDragElement = taskItem;
             touchStartY = e.touches[0].clientY;
 
-            // Start drag immediately when touching the handle
+            // Start drag after short hold
             touchTimeout = setTimeout(() => {
                 isDragging = true;
                 taskItem.classList.add('bg-blue-50', 'shadow-lg', 'z-50');
                 navigator.vibrate && navigator.vibrate(50);
-            }, 150);
+                // Only add touchmove listener when actually dragging
+                document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            }, 200);
         }
 
         function handleTouchMove(e) {
-            if (!touchDragElement || !isDragging) {
-                if (touchTimeout && Math.abs(e.touches[0].clientY - touchStartY) > 10) {
-                    clearTimeout(touchTimeout);
-                    touchTimeout = null;
-                }
-                return;
-            }
+            if (!touchDragElement || !isDragging) return;
 
             e.preventDefault();
 
@@ -580,6 +577,7 @@
 
             if (touchDragElement && isDragging) {
                 touchDragElement.classList.remove('bg-blue-50', 'shadow-lg', 'z-50');
+                document.removeEventListener('touchmove', handleTouchMove);
                 saveState();
             }
 
