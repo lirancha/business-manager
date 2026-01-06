@@ -545,27 +545,43 @@
         }
 
         function handleTouchMove(e) {
-            if (!touchDragElement || !isDragging) return;
+            if (!isDragging || !touchDragTaskId) return;
 
             e.preventDefault();
 
             const touchY = e.touches[0].clientY;
-            const container = touchDragElement.closest('.task-list-container');
+
+            // Find current dragged element (may have changed after re-render)
+            const currentElement = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
+            if (!currentElement) return;
+
+            const container = currentElement.closest('.task-list-container');
             const taskItems = Array.from(container.querySelectorAll('.task-item'));
 
             for (const item of taskItems) {
-                if (item === touchDragElement) continue;
+                const itemTaskId = parseInt(item.dataset.taskId);
+                if (itemTaskId === touchDragTaskId) continue;
 
                 const rect = item.getBoundingClientRect();
                 const middle = rect.top + rect.height / 2;
 
-                if (touchY < middle && touchY > rect.top - 20) {
-                    const targetTaskId = parseInt(item.dataset.taskId);
-                    reorderTasks(touchDragListId, touchDragTaskId, targetTaskId);
-                    break;
-                } else if (touchY > middle && touchY < rect.bottom + 20) {
-                    const targetTaskId = parseInt(item.dataset.taskId);
-                    reorderTasks(touchDragListId, touchDragTaskId, targetTaskId);
+                // Check if finger is over this item
+                if (touchY > rect.top && touchY < rect.bottom) {
+                    const taskList = state.taskLists.find(l => l.id === touchDragListId);
+                    const fromIndex = taskList.tasks.findIndex(t => t.id === touchDragTaskId);
+                    const toIndex = taskList.tasks.findIndex(t => t.id === itemTaskId);
+
+                    // Only swap if moving in the right direction
+                    if ((fromIndex < toIndex && touchY > middle) || (fromIndex > toIndex && touchY < middle)) {
+                        reorderTasks(touchDragListId, touchDragTaskId, itemTaskId);
+                        // Re-highlight the dragged element after re-render
+                        setTimeout(() => {
+                            const newElement = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
+                            if (newElement) {
+                                newElement.classList.add('bg-blue-50', 'shadow-lg', 'z-50');
+                            }
+                        }, 0);
+                    }
                     break;
                 }
             }
@@ -575,8 +591,12 @@
             clearTimeout(touchTimeout);
             touchTimeout = null;
 
-            if (touchDragElement && isDragging) {
-                touchDragElement.classList.remove('bg-blue-50', 'shadow-lg', 'z-50');
+            if (isDragging && touchDragTaskId) {
+                // Find and unhighlight the dragged element
+                const element = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
+                if (element) {
+                    element.classList.remove('bg-blue-50', 'shadow-lg', 'z-50');
+                }
                 document.removeEventListener('touchmove', handleTouchMove);
                 saveState();
             }
