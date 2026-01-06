@@ -542,7 +542,7 @@
         }
 
         function handleTouchStart(e) {
-            // Check if touch is on a task item (but not checkbox or delete)
+            // Check if touch is on a task item
             const taskItem = e.target.closest('.task-item');
             if (!taskItem) return;
 
@@ -557,14 +557,14 @@
             touchStartY = e.touches[0].clientY;
             touchStartX = e.touches[0].clientX;
 
-            // Start drag after holding for 400ms without moving
+            // Start drag after holding for 500ms without moving
             touchTimeout = setTimeout(() => {
                 isDragging = true;
                 taskItem.classList.add('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
-                navigator.vibrate && navigator.vibrate(50);
+                navigator.vibrate && navigator.vibrate(100); // Longer vibration to confirm drag mode
                 // Now add the drag move listener
                 document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            }, 400);
+            }, 500);
         }
 
         function handleTouchMove(e) {
@@ -611,20 +611,27 @@
         }
 
         function handleTouchEnd(e) {
+            const wasQuickTap = touchTimeout !== null; // Timer still running = quick tap
+            const listId = touchDragListId;
+            const taskId = touchDragTaskId;
+
             // Clear the long-press timer
             if (touchTimeout) {
                 clearTimeout(touchTimeout);
                 touchTimeout = null;
             }
 
-            if (isDragging && touchDragTaskId) {
-                // Find and unhighlight the dragged element
-                const element = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
+            if (isDragging && taskId) {
+                // Was dragging - finish drag
+                const element = document.querySelector(`.task-item[data-task-id="${taskId}"][data-list-id="${listId}"]`);
                 if (element) {
                     element.classList.remove('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
                 }
                 document.removeEventListener('touchmove', handleTouchMove);
                 saveState();
+            } else if (wasQuickTap && taskId && listId) {
+                // Quick tap - open edit
+                editTask(listId, taskId);
             }
 
             touchDragElement = null;
@@ -987,8 +994,7 @@
                                     <input type="checkbox" ${task.done ? 'checked' : ''}
                                            onchange="toggleTask(${taskList.id}, ${task.id})"
                                            class="task-checkbox w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
-                                    <span class="task-text flex-1 cursor-pointer hover:text-blue-600 ${task.done ? 'line-through text-gray-400' : ''}"
-                                          onclick="editTask(${taskList.id}, ${task.id})">${task.text}</span>
+                                    <span class="task-text flex-1 ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
                                     <button onclick="deleteTask(${taskList.id}, ${task.id})" class="task-delete text-gray-400 hover:text-red-500 text-lg px-2">
                                         &times;
                                     </button>
