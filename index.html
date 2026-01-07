@@ -12,9 +12,19 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
-        html, body { overflow-x: hidden; max-width: 100vw; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100vw;
+            width: 100%;
+        }
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
         .task-item { transition: background-color 0.15s, box-shadow 0.15s; }
+        /* Prevent any element from overflowing */
+        main, header, .bg-white { max-width: 100vw; }
+        /* Fix product rows */
+        .flex.items-center { flex-wrap: nowrap; min-width: 0; }
+        .flex-1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
