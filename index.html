@@ -337,22 +337,53 @@
             renderCategories();
         }
 
-        function incrementQuantity(categoryId, productId) {
+        function incrementQuantity(categoryId, productId, amount = 1) {
             const category = state.categories.find(c => c.id === categoryId);
             const product = category.products.find(p => p.id === productId);
-            product.quantity++;
+            product.quantity += amount;
             saveState();
             renderCategories();
         }
 
-        function decrementQuantity(categoryId, productId) {
+        function decrementQuantity(categoryId, productId, amount = 1) {
             const category = state.categories.find(c => c.id === categoryId);
             const product = category.products.find(p => p.id === productId);
-            if (product.quantity > 0) {
-                product.quantity--;
-            }
+            product.quantity = Math.max(0, product.quantity - amount);
             saveState();
             renderCategories();
+        }
+
+        // Long press handlers for +/- buttons
+        let qtyLongPressTimer = null;
+        let qtyLongPressed = false;
+
+        function handleQtyTouchStart(e, categoryId, productId, isIncrement) {
+            qtyLongPressed = false;
+            qtyLongPressTimer = setTimeout(() => {
+                qtyLongPressed = true;
+                navigator.vibrate && navigator.vibrate(50);
+                if (isIncrement) {
+                    incrementQuantity(categoryId, productId, 5);
+                } else {
+                    decrementQuantity(categoryId, productId, 5);
+                }
+            }, 500);
+        }
+
+        function handleQtyTouchEnd(e, categoryId, productId, isIncrement) {
+            if (qtyLongPressTimer) {
+                clearTimeout(qtyLongPressTimer);
+                qtyLongPressTimer = null;
+            }
+            if (!qtyLongPressed) {
+                // Quick tap - add/remove 1
+                if (isIncrement) {
+                    incrementQuantity(categoryId, productId, 1);
+                } else {
+                    decrementQuantity(categoryId, productId, 1);
+                }
+            }
+            qtyLongPressed = false;
         }
 
         function getStockStatus(quantity) {
@@ -916,15 +947,19 @@
                                             ${unitLabel}
                                         </button>
                                         <div class="flex items-center">
-                                            <button onclick="decrementQuantity(${category.id}, ${product.id})"
-                                                    class="w-8 h-8 rounded-l-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                            <button ontouchstart="handleQtyTouchStart(event, ${category.id}, ${product.id}, false)"
+                                                    ontouchend="handleQtyTouchEnd(event, ${category.id}, ${product.id}, false)"
+                                                    onclick="return false"
+                                                    class="w-8 h-8 rounded-l-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg select-none">
                                                 -
                                             </button>
                                             <span class="w-10 h-8 flex items-center justify-center bg-gray-100 font-medium text-sm">
                                                 ${product.quantity}
                                             </span>
-                                            <button onclick="incrementQuantity(${category.id}, ${product.id})"
-                                                    class="w-8 h-8 rounded-r-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                            <button ontouchstart="handleQtyTouchStart(event, ${category.id}, ${product.id}, true)"
+                                                    ontouchend="handleQtyTouchEnd(event, ${category.id}, ${product.id}, true)"
+                                                    onclick="return false"
+                                                    class="w-8 h-8 rounded-r-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg select-none">
                                                 +
                                             </button>
                                         </div>
