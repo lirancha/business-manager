@@ -13,6 +13,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
+        .qty-btn {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -557,7 +565,7 @@
                                             <button ontouchstart="handleQtyTouchStart(event, ${category.id}, ${product.id}, false)"
                                                     ontouchend="handleQtyTouchEnd(event, ${category.id}, ${product.id}, false)"
                                                     onclick="return false"
-                                                    class="w-8 h-8 rounded-l-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg select-none">
+                                                    class="qty-btn w-8 h-8 rounded-l-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
                                                 -
                                             </button>
                                             <span class="w-10 h-8 flex items-center justify-center bg-gray-100 font-medium text-sm">
@@ -566,7 +574,7 @@
                                             <button ontouchstart="handleQtyTouchStart(event, ${category.id}, ${product.id}, true)"
                                                     ontouchend="handleQtyTouchEnd(event, ${category.id}, ${product.id}, true)"
                                                     onclick="return false"
-                                                    class="w-8 h-8 rounded-r-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg select-none">
+                                                    class="qty-btn w-8 h-8 rounded-r-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
                                                 +
                                             </button>
                                         </div>
