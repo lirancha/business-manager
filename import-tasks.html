@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Tasks - Zucca</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full text-center">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Import Tasks to Isgav</h1>
+        <div id="status" class="mb-4 text-gray-600">Ready to import...</div>
+        <button onclick="importTasks()" id="importBtn" class="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-600 w-full">
+            Import Tasks
+        </button>
+        <div id="result" class="mt-4 text-sm"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
+            authDomain: "zucca-mang.firebaseapp.com",
+            projectId: "zucca-mang",
+            storageBucket: "zucca-mang.firebasestorage.app",
+            messagingSenderId: "423632065920",
+            appId: "1:423632065920:web:43c340defd3fe33442dd65"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Task lists to import
+        const taskListsToImport = [
+            {
+                id: Date.now(),
+                name: "צק ליסט סגירה",
+                color: "blue",
+                tasks: [
+                    { id: Date.now() + 1, text: "משימות יומיות במידה ויש (ביצים טונה וכו)", done: false },
+                    { id: Date.now() + 2, text: "הוצאת מאפים לחם ולחמניות", done: false },
+                    { id: Date.now() + 3, text: "מילוי עמדת סוכר ומפיות בכל העמדות", done: false },
+                    { id: Date.now() + 4, text: "מילוי מקררי שתיה", done: false },
+                    { id: Date.now() + 5, text: "מילוי מקררי חלב", done: false },
+                    { id: Date.now() + 6, text: "מילוי עוגיות במקרר", done: false },
+                    { id: Date.now() + 7, text: "לעדכן צק ליסט חוסרים מהמחסן (שתיה וחדפ)", done: false },
+                    { id: Date.now() + 8, text: "ניקיון מסחטת תפוזים, בלנדר ומילקשייק", done: false },
+                    { id: Date.now() + 9, text: "לדגם עמדת גלידה, תוספות, גביעים כוסות, מפיות", done: false },
+                    { id: Date.now() + 10, text: "סגירת עמדת גלידה ונקיון כלים ושלטים", done: false },
+                    { id: Date.now() + 11, text: "ניקיון גינה, שולחנות חוץ באזור האוהל", done: false },
+                    { id: Date.now() + 12, text: "סגירת מכונת קפה נקיון מכונה וניקיון יסודי לכלי החלב", done: false },
+                    { id: Date.now() + 13, text: "ריקון פחים והחלפת שקיות אשפה", done: false },
+                    { id: Date.now() + 14, text: "ניקיון יסודי כל העמדות", done: false },
+                    { id: Date.now() + 15, text: "ניקיון שירותים", done: false },
+                    { id: Date.now() + 16, text: "שטיפת רצפה", done: false },
+                    { id: Date.now() + 17, text: "לוודא כיבוי! תנור פיצה, מזגן, מכונת קפה, מוזיקה, אורות ושכל דלתות המקפיאים סגורות היטב", done: false },
+                    { id: Date.now() + 18, text: "הכנסת עגלת סוכר ושולחן מתכת וכסאות", done: false },
+                    { id: Date.now() + 19, text: "סגירת קופה ואישור שאין חוסר", done: false },
+                    { id: Date.now() + 20, text: "נעילת המקום והשארת מפתח במקומו", done: false }
+                ]
+            },
+            {
+                id: Date.now() + 100,
+                name: "סגירה ביום שישי",
+                color: "purple",
+                tasks: [
+                    { id: Date.now() + 101, text: "מסיר שומנים לראשי קפה", done: false },
+                    { id: Date.now() + 102, text: "כיבוי מקרר גלידה והעברת גלידה למקפיא", done: false },
+                    { id: Date.now() + 103, text: "ריקון אייס קפה, כיבוי והשארת מים עם קצת סבון במיכל", done: false },
+                    { id: Date.now() + 104, text: "ריקון מקרר אוכל בבר מכל מה שצריך", done: false }
+                ]
+            }
+        ];
+
+        async function importTasks() {
+            const btn = document.getElementById('importBtn');
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            btn.textContent = 'Importing...';
+            status.textContent = 'Connecting to Firebase...';
+
+            try {
+                // Get current data
+                const docRef = db.collection('locations').doc('isgav');
+                const doc = await docRef.get();
+
+                let currentData = doc.exists ? doc.data() : { categories: [], taskLists: [] };
+
+                // Add new task lists (append to existing)
+                const existingTaskLists = currentData.taskLists || [];
+                const updatedTaskLists = [...existingTaskLists, ...taskListsToImport];
+
+                // Save to Firebase
+                await docRef.set({
+                    ...currentData,
+                    taskLists: updatedTaskLists
+                });
+
+                status.textContent = 'Import successful!';
+                status.className = 'mb-4 text-green-600 font-bold';
+                btn.textContent = 'Done!';
+                btn.className = 'bg-green-500 text-white px-6 py-3 rounded-lg font-medium w-full';
+
+                result.innerHTML = `
+                    <div class="text-green-600">
+                        <p>Imported ${taskListsToImport.length} task lists:</p>
+                        <ul class="mt-2 text-right">
+                            ${taskListsToImport.map(l => `<li>- ${l.name} (${l.tasks.length} tasks)</li>`).join('')}
+                        </ul>
+                        <p class="mt-3 text-gray-600">You can now check the app!</p>
+                    </div>
+                `;
+            } catch (error) {
+                status.textContent = 'Error: ' + error.message;
+                status.className = 'mb-4 text-red-600';
+                btn.textContent = 'Retry';
+                btn.disabled = false;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
