@@ -1043,12 +1043,13 @@
                         <div class="divide-y task-list-container" data-list-id="${taskList.id}">
                             ${taskList.tasks.map((task, index) => `
                                 <div class="task-item flex items-center gap-3 py-3 ${task.done ? 'opacity-60' : ''}"
+                                     dir="rtl"
                                      data-task-id="${task.id}"
                                      data-list-id="${taskList.id}">
                                     <input type="checkbox" ${task.done ? 'checked' : ''}
                                            onchange="toggleTask(${taskList.id}, ${task.id})"
                                            class="task-checkbox w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
-                                    <span class="task-text flex-1 ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                                    <span class="task-text flex-1 text-right ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
                                     <button onclick="deleteTask(${taskList.id}, ${task.id})" class="task-delete text-gray-400 hover:text-red-500 text-lg px-2">
                                         &times;
                                     </button>
