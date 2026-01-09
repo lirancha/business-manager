@@ -12,9 +12,9 @@
     <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full text-center">
         <h1 class="text-2xl font-bold text-gray-800 mb-4">Restore All Tasks - Isgav</h1>
         <div id="status" class="mb-4 text-gray-600">Ready to restore all task lists...</div>
-        <button onclick="importTasks()" id="importBtn" class="bg-red-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-600 w-full">
-            Restore All Tasks
-        </button>
+        <div id="importBtn" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium w-full">
+            Restoring automatically...
+        </div>
         <div id="result" class="mt-4 text-sm"></div>
     </div>
 
@@ -135,6 +135,11 @@
                 console.error(error);
             }
         }
+
+        // Auto-run on page load
+        window.onload = function() {
+            importTasks();
+        };
     </script>
 </body>
 </html>
