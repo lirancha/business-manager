@@ -12,7 +12,35 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100vw;
+            width: 100%;
+            position: relative;
+        }
+        body {
+            overflow-x: hidden !important;
+        }
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
+        /* Prevent any element from overflowing */
+        main, header, .bg-white, div { max-width: 100vw; }
+        main { overflow-x: hidden; padding: 0 4px; }
+        /* Fix product rows */
+        .flex.items-center { flex-wrap: nowrap; min-width: 0; }
+        .flex-1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        /* Product row fix */
+        .product-row {
+            max-width: 100%;
+            overflow: hidden;
+        }
+        .product-name {
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 1;
+        }
         .qty-btn {
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -20,7 +48,10 @@
             user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
+            flex-shrink: 0;
         }
+        /* Fix buttons from shrinking */
+        button { flex-shrink: 0; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -554,8 +585,8 @@
                                 const unit = product.unit || 'item';
                                 const unitLabel = unit === 'package' ? 'pkg' : 'item';
                                 return `
-                                <div class="flex items-center justify-between py-2">
-                                    <span class="${needsOrder ? 'text-red-500 font-medium' : ''}">${product.name}</span>
+                                <div class="product-row flex items-center justify-between py-2 gap-2">
+                                    <span class="product-name ${needsOrder ? 'text-red-500 font-medium' : ''}">${product.name}</span>
                                     <div class="flex items-center gap-2">
                                         <button onclick="toggleProductUnit(${category.id}, ${product.id})"
                                                 class="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200">
