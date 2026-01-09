@@ -54,6 +54,24 @@
         }
         /* Fix buttons from shrinking */
         button { flex-shrink: 0; }
+        /* Fix inventory section */
+        #inventory-tab, #tasks-tab, #order-tab {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        .p-4, .p-3 {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        /* Fix input containers */
+        .flex.gap-2 {
+            max-width: 100%;
+            overflow: hidden;
+        }
+        input[type="text"] {
+            min-width: 0;
+            max-width: 100%;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
