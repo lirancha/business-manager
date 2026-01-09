@@ -915,31 +915,31 @@
                 const isExpanded = expandedCategories.includes(category.id);
                 const itemsNeedingOrder = category.products.filter(p => p.quantity > 0).length;
                 return `
-                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
-                    <div class="bg-gray-800 text-white px-4 py-3 flex justify-between items-center cursor-pointer" onclick="toggleCategory(${category.id})">
-                        <div class="flex items-center gap-2">
+                <div class="bg-white rounded-lg shadow mb-3" style="max-width: 100%; overflow: hidden;">
+                    <div class="bg-gray-800 text-white px-2 py-2 flex justify-between items-center cursor-pointer" onclick="toggleCategory(${category.id})">
+                        <div class="flex items-center gap-1">
                             <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
-                            <h3 class="font-bold">${category.name}</h3>
-                            ${itemsNeedingOrder > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">${itemsNeedingOrder}</span>` : ''}
+                            <h3 class="font-bold text-sm">${category.name}</h3>
+                            ${itemsNeedingOrder > 0 ? `<span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">${itemsNeedingOrder}</span>` : ''}
                         </div>
-                        <div class="flex items-center gap-3" onclick="event.stopPropagation()">
-                            <button onclick="resetCategory(${category.id})" class="text-green-300 hover:text-green-100 text-sm">
-                                Reset All
+                        <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                            <button onclick="resetCategory(${category.id})" class="text-green-300 hover:text-green-100 text-xs">
+                                Reset
                             </button>
-                            <button onclick="generateCategoryOrder(${category.id})" class="text-amber-300 hover:text-amber-100 text-sm">
+                            <button onclick="generateCategoryOrder(${category.id})" class="text-amber-300 hover:text-amber-100 text-xs">
                                 Order
                             </button>
-                            <button onclick="deleteCategory(${category.id})" class="text-red-300 hover:text-red-100 text-sm">
-                                Delete
+                            <button onclick="deleteCategory(${category.id})" class="text-red-300 hover:text-red-100 text-xs">
+                                Del
                             </button>
                         </div>
                     </div>
-                    <div class="${isExpanded ? '' : 'hidden'} p-3">
-                        <div class="flex gap-2 mb-3">
+                    <div class="${isExpanded ? '' : 'hidden'} p-2" style="max-width: 100%; overflow: hidden;">
+                        <div class="flex gap-1 mb-2" style="max-width: 100%;">
                             <input type="text" id="product-input-${category.id}" placeholder="Add product..."
-                                   class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   class="flex-1 min-w-0 px-2 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                    onkeypress="if(event.key==='Enter')addProduct(${category.id})">
-                            <button onclick="addProduct(${category.id})" class="bg-gray-200 px-3 py-2 rounded-lg text-sm hover:bg-gray-300">
+                            <button onclick="addProduct(${category.id})" class="bg-gray-200 px-3 py-2 rounded-lg text-sm hover:bg-gray-300 flex-shrink-0">
                                 +
                             </button>
                         </div>
