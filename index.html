@@ -936,7 +936,7 @@
                 const itemsNeedingOrder = category.products.filter(p => p.quantity > 0).length;
                 return `
                 <div class="bg-white rounded-lg shadow mb-3" style="max-width: 100%; overflow: hidden;">
-                    <div class="bg-gray-800 text-white px-2 py-2 flex justify-between items-center cursor-pointer" onclick="toggleCategory(${category.id})">
+                    <div class="bg-gray-800 text-white px-2 py-2 flex justify-between items-center cursor-pointer" dir="rtl" onclick="toggleCategory(${category.id})">
                         <div class="flex items-center gap-1">
                             <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
                             <h3 class="font-bold text-sm">${category.name}</h3>
@@ -970,7 +970,7 @@
                                 const unit = product.unit || 'item';
                                 const unitLabel = unit === 'package' ? 'pkg' : 'item';
                                 return `
-                                <div class="product-row flex items-center justify-between py-2 gap-2">
+                                <div class="product-row flex items-center justify-between py-2 gap-2" dir="rtl">
                                     <span class="product-name ${needsOrder ? 'text-red-500 font-medium' : ''}">${product.name}</span>
                                     <div class="flex items-center gap-2">
                                         <button onclick="toggleProductUnit(${category.id}, ${product.id})"
