@@ -34,41 +34,21 @@
         // Task lists to import
         const taskListsToImport = [
             {
-                id: Date.now(),
-                name: "צק ליסט סגירה",
-                color: "blue",
+                id: Date.now() + 200,
+                name: "מגשי אירוח 12/24 יח'",
+                color: "green",
                 tasks: [
-                    { id: Date.now() + 1, text: "משימות יומיות במידה ויש (ביצים טונה וכו)", done: false },
-                    { id: Date.now() + 2, text: "הוצאת מאפים לחם ולחמניות", done: false },
-                    { id: Date.now() + 3, text: "מילוי עמדת סוכר ומפיות בכל העמדות", done: false },
-                    { id: Date.now() + 4, text: "מילוי מקררי שתיה", done: false },
-                    { id: Date.now() + 5, text: "מילוי מקררי חלב", done: false },
-                    { id: Date.now() + 6, text: "מילוי עוגיות במקרר", done: false },
-                    { id: Date.now() + 7, text: "לעדכן צק ליסט חוסרים מהמחסן (שתיה וחדפ)", done: false },
-                    { id: Date.now() + 8, text: "ניקיון מסחטת תפוזים, בלנדר ומילקשייק", done: false },
-                    { id: Date.now() + 9, text: "לדגם עמדת גלידה, תוספות, גביעים כוסות, מפיות", done: false },
-                    { id: Date.now() + 10, text: "סגירת עמדת גלידה ונקיון כלים ושלטים", done: false },
-                    { id: Date.now() + 11, text: "ניקיון גינה, שולחנות חוץ באזור האוהל", done: false },
-                    { id: Date.now() + 12, text: "סגירת מכונת קפה נקיון מכונה וניקיון יסודי לכלי החלב", done: false },
-                    { id: Date.now() + 13, text: "ריקון פחים והחלפת שקיות אשפה", done: false },
-                    { id: Date.now() + 14, text: "ניקיון יסודי כל העמדות", done: false },
-                    { id: Date.now() + 15, text: "ניקיון שירותים", done: false },
-                    { id: Date.now() + 16, text: "שטיפת רצפה", done: false },
-                    { id: Date.now() + 17, text: "לוודא כיבוי! תנור פיצה, מזגן, מכונת קפה, מוזיקה, אורות ושכל דלתות המקפיאים סגורות היטב", done: false },
-                    { id: Date.now() + 18, text: "הכנסת עגלת סוכר ושולחן מתכת וכסאות", done: false },
-                    { id: Date.now() + 19, text: "סגירת קופה ואישור שאין חוסר", done: false },
-                    { id: Date.now() + 20, text: "נעילת המקום והשארת מפתח במקומו", done: false }
-                ]
-            },
-            {
-                id: Date.now() + 100,
-                name: "סגירה ביום שישי",
-                color: "purple",
-                tasks: [
-                    { id: Date.now() + 101, text: "מסיר שומנים לראשי קפה", done: false },
-                    { id: Date.now() + 102, text: "כיבוי מקרר גלידה והעברת גלידה למקפיא", done: false },
-                    { id: Date.now() + 103, text: "ריקון אייס קפה, כיבוי והשארת מים עם קצת סבון במיכל", done: false },
-                    { id: Date.now() + 104, text: "ריקון מקרר אוכל בבר מכל מה שצריך", done: false }
+                    { id: Date.now() + 201, text: "אבוקדו 192/336", done: false },
+                    { id: Date.now() + 202, text: "סלטונה 192/336", done: false },
+                    { id: Date.now() + 203, text: "סלט ביצים 192/336", done: false },
+                    { id: Date.now() + 204, text: "גאודה 192/336", done: false },
+                    { id: Date.now() + 205, text: "פטה פלפלים 192/336", done: false },
+                    { id: Date.now() + 206, text: "סביח 192/336", done: false },
+                    { id: Date.now() + 207, text: "שמנת סלמון 216/384", done: false },
+                    { id: Date.now() + 208, text: "בורקיטס 66/120", done: false },
+                    { id: Date.now() + 209, text: "רוגלך 54/96", done: false },
+                    { id: Date.now() + 210, text: "גבינית 54/96", done: false },
+                    { id: Date.now() + 211, text: "פלטת ירקות ומתבלים קטן/גדול 90/175", done: false }
                 ]
             }
         ];
@@ -106,7 +86,7 @@
 
                 result.innerHTML = `
                     <div class="text-green-600">
-                        <p>Imported ${taskListsToImport.length} task lists:</p>
+                        <p>Imported ${taskListsToImport.length} task list:</p>
                         <ul class="mt-2 text-right">
                             ${taskListsToImport.map(l => `<li>- ${l.name} (${l.tasks.length} tasks)</li>`).join('')}
                         </ul>
