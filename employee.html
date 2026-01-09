@@ -13,82 +13,34 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
-        html {
-            overflow-x: hidden;
-            max-width: 100vw;
-            width: 100%;
-        }
-        body {
-            overflow-x: hidden !important;
-            max-width: 100vw;
-            width: 100%;
+        html, body {
             margin: 0;
             padding: 0;
-        }
-        /* Force all containers to respect viewport */
-        header, main, footer, div, section {
-            max-width: 100vw !important;
-        }
-        .max-w-lg {
-            max-width: min(32rem, 100vw) !important;
             width: 100%;
-            padding-left: 0;
-            padding-right: 0;
+            max-width: 100%;
+            overflow-x: hidden;
         }
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
-        /* Prevent any element from overflowing */
-        main, header, .bg-white, div { max-width: 100vw; }
-        main { overflow-x: hidden; padding: 0 4px; }
-        /* Fix product rows */
-        .flex.items-center { flex-wrap: nowrap; min-width: 0; }
-        .flex-1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-        /* Product row fix */
-        .product-row {
-            max-width: 100%;
-            overflow: hidden;
-        }
+        /* Product name truncation */
         .product-name {
             max-width: 100px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            flex-shrink: 1;
         }
+        /* Prevent selection on quantity buttons */
         .qty-btn {
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
-            flex-shrink: 0;
-        }
-        /* Fix buttons from shrinking */
-        button { flex-shrink: 0; }
-        /* Fix inventory section */
-        #inventory-tab, #tasks-tab {
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-        .p-4, .p-3 {
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-        /* Fix input containers */
-        .flex.gap-2 {
-            max-width: 100%;
-            overflow: hidden;
-        }
-        input[type="text"] {
-            min-width: 0;
-            max-width: 100%;
         }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <!-- Header -->
-    <header class="bg-white shadow-sm sticky top-0 z-10" style="max-width: 100vw; overflow: hidden;">
-        <div class="max-w-lg mx-auto px-4 py-3" style="max-width: 100%;">
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-3">
             <h1 id="location-name" class="text-xl font-bold text-gray-800 text-center">Zucca Café</h1>
             <p class="text-xs text-gray-400 text-center">Staff View</p>
             <!-- Location Switcher -->
@@ -104,7 +56,7 @@
             </div>
         </div>
         <!-- Tabs -->
-        <div class="max-w-lg mx-auto flex border-b" style="max-width: 100%;">
+        <div class="flex border-b">
             <button id="tab-inventory" class="flex-1 py-3 text-center font-medium tab-active" onclick="switchTab('inventory')">
                 Inventory
             </button>
@@ -115,7 +67,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-lg mx-auto pb-24 px-2" style="max-width: 100vw;">
+    <main class="pb-24 px-3">
         <!-- Inventory Tab -->
         <div id="inventory-tab" class="p-4">
             <!-- Categories Container -->
