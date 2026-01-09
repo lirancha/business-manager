@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Inventory - Isgav</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full text-center">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Import Inventory - Isgav</h1>
+        <div id="status" class="mb-4 text-gray-600">Ready to import...</div>
+        <button id="importBtn" onclick="importInventory()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium w-full">
+            Click to Import (ADDS to existing data)
+        </button>
+        <div id="result" class="mt-4 text-sm text-right"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
+            authDomain: "zucca-mang.firebaseapp.com",
+            projectId: "zucca-mang",
+            storageBucket: "zucca-mang.firebasestorage.app",
+            messagingSenderId: "423632065920",
+            appId: "1:423632065920:web:43c340defd3fe33442dd65"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // New categories to ADD (not replace!)
+        const newCategories = [
+            {
+                id: Date.now(),
+                name: "צח שיווק - חומרי ניקוי וחד\"פ",
+                products: [
+                    { id: Date.now() + 1, name: "חבקים גדול קטן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 2, name: "כוס הפוך קטן ממותג", quantity: 0, unit: "item" },
+                    { id: Date.now() + 3, name: "כוס הפוך כדול ממותג", quantity: 0, unit: "item" },
+                    { id: Date.now() + 4, name: "כוס קפה קר 330", quantity: 0, unit: "item" },
+                    { id: Date.now() + 5, name: "כוס קריסטל", quantity: 0, unit: "item" },
+                    { id: Date.now() + 6, name: "כוס מים פשוטה חדפ", quantity: 0, unit: "item" },
+                    { id: Date.now() + 7, name: "מכסה הפוך קטן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 8, name: "מכסה הפוך גדול", quantity: 0, unit: "item" },
+                    { id: Date.now() + 9, name: "מכסה כיפה קפה קר 2", quantity: 0, unit: "item" },
+                    { id: Date.now() + 10, name: "נייר קופה 3", quantity: 0, unit: "item" },
+                    { id: Date.now() + 11, name: "כפיות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 12, name: "כפות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 13, name: "סט סכום חדפ", quantity: 0, unit: "item" },
+                    { id: Date.now() + 14, name: "מנשא זוגי לכוסות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 15, name: "שקית מאפה חומה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 16, name: "שקית ניילון גופיה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 17, name: "שקית זוקה ממותג", quantity: 0, unit: "item" },
+                    { id: Date.now() + 18, name: "שקיות אשפה שחורות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 19, name: "נייר ניגוב גלילים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 20, name: "נייר ניגוב מתקן ידיים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 21, name: "מפית דיספנסר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 22, name: "מפית עריכה שמינית", quantity: 0, unit: "item" },
+                    { id: Date.now() + 23, name: "קרטוני פיצה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 24, name: "תחתיות קרטון", quantity: 0, unit: "item" },
+                    { id: Date.now() + 25, name: "נייר חום אפיה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 26, name: "דפי הפרדה צלופן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 27, name: "נוזל ניקוי רצפות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 28, name: "סבון כלים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 29, name: "סבון ידיים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 30, name: "אקונומיקה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 31, name: "סמרטוטים צהובים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 32, name: "סקוץ", quantity: 0, unit: "item" },
+                    { id: Date.now() + 33, name: "מגשי פיצה קטנים לעוגיות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 34, name: "נייר טואלט", quantity: 0, unit: "item" },
+                    { id: Date.now() + 35, name: "קש שחור עבה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 36, name: "בוחשנים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 37, name: "שקיות שקופות בראוניז", quantity: 0, unit: "item" },
+                    { id: Date.now() + 38, name: "קופסאות פלסטיק 4 ליטר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 39, name: "קופסאות פלסטיק שחורות ליטר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 40, name: "חוצצים למוזלי לכוס 330", quantity: 0, unit: "item" },
+                    { id: Date.now() + 41, name: "מגשי פיצה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 42, name: "מכסה קערת סלט שקוף", quantity: 0, unit: "item" },
+                    { id: Date.now() + 43, name: "מכסה קערה סלט", quantity: 0, unit: "item" },
+                    { id: Date.now() + 44, name: "בקבוקי 250 מל", quantity: 0, unit: "item" },
+                    { id: Date.now() + 45, name: "בקבוקונים קטנים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 46, name: "מסיר שומנים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 47, name: "נוזל ניקוי רצפה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 48, name: "גביעים 150גרם של חומוס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 49, name: "סמרטוט רצפה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 50, name: "שקיות חצי", quantity: 0, unit: "item" },
+                    { id: Date.now() + 51, name: "שקיות שקופות כריכים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 52, name: "שקיות שקופות עוגיות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 53, name: "שקיות נייר כריכי בוקר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 54, name: "כלים למרק", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 100,
+                name: "צי שיווק - חלב וגבינות",
+                products: [
+                    { id: Date.now() + 101, name: "חלב 3%", quantity: 0, unit: "item" },
+                    { id: Date.now() + 102, name: "חלב דל 1%", quantity: 0, unit: "item" },
+                    { id: Date.now() + 103, name: "חלב שיבולת שועל אוטלי", quantity: 0, unit: "item" },
+                    { id: Date.now() + 104, name: "חלב שקדים תנובה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 105, name: "חלב סויה תנובה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 106, name: "גאודה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 107, name: "מוצרלה נקניק", quantity: 0, unit: "item" },
+                    { id: Date.now() + 108, name: "גבינת שמנת (כפר תבור/שומרון)", quantity: 0, unit: "item" },
+                    { id: Date.now() + 109, name: "גבינת פטה (כפר תבור)", quantity: 0, unit: "item" },
+                    { id: Date.now() + 110, name: "גבינת פטה טבעונית", quantity: 0, unit: "item" },
+                    { id: Date.now() + 111, name: "מוצרלה מגורדת (עיברי)", quantity: 0, unit: "item" },
+                    { id: Date.now() + 112, name: "טונה (פילטונה)", quantity: 0, unit: "item" },
+                    { id: Date.now() + 113, name: "ביצים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 114, name: "סלמון קפוא 0.5", quantity: 0, unit: "item" },
+                    { id: Date.now() + 115, name: "מיץ לימון", quantity: 0, unit: "item" },
+                    { id: Date.now() + 116, name: "ממרח פסטו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 117, name: "ממרח טפנד זיתים שחורים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 118, name: "שמנת מתוקה", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 200,
+                name: "ריסטרטו - קפה ומוצרים",
+                products: [
+                    { id: Date.now() + 201, name: "פולי קפה דיאמה אדום 1קג", quantity: 0, unit: "item" },
+                    { id: Date.now() + 202, name: "קפה למקינטה 250ג", quantity: 0, unit: "item" },
+                    { id: Date.now() + 203, name: "קפה נטול", quantity: 0, unit: "item" },
+                    { id: Date.now() + 204, name: "קפסולות אינטנסו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 205, name: "קפסולות ערביקה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 206, name: "סוכר לבן מנות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 207, name: "סוכר חום מנות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 208, name: "סוכרדיאט מנות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 209, name: "בלסמי מצומצם כשר 600מל", quantity: 0, unit: "item" },
+                    { id: Date.now() + 210, name: "חלב סויה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 211, name: "חלב שקדים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 212, name: "חלב שיבול שועל", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 300,
+                name: "ביסקוטי - עוגות, עוגיות ומאפים",
+                products: [
+                    { id: Date.now() + 301, name: "בורקיטס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 302, name: "גבינית", quantity: 0, unit: "item" },
+                    { id: Date.now() + 303, name: "רוגלך", quantity: 0, unit: "item" },
+                    { id: Date.now() + 304, name: "עוגת גזר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 305, name: "מעמול תמרים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 306, name: "בחושה גזר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 307, name: "בחושה גזר ללא סוכר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 308, name: "קראנץ שוקולד", quantity: 0, unit: "item" },
+                    { id: Date.now() + 309, name: "פס ביסקוויט", quantity: 0, unit: "item" },
+                    { id: Date.now() + 310, name: "פס ביסקוויט טבעוני", quantity: 0, unit: "item" },
+                    { id: Date.now() + 311, name: "פס טופי קראנץ", quantity: 0, unit: "item" },
+                    { id: Date.now() + 312, name: "פס קינדר בואנו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 313, name: "פס אוראו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 314, name: "פס גבינת תות טבעוני", quantity: 0, unit: "item" },
+                    { id: Date.now() + 315, name: "פס שוקולד בלגי ללא סוכר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 316, name: "עוגיות ריבה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 317, name: "מקלות מלוחים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 318, name: "בחושה וניל נוטלה ללא גלוטן", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 400,
+                name: "אורי פרסקו - גלידה ופירות קפואים",
+                products: [
+                    { id: Date.now() + 401, name: "וניל צרפתי", quantity: 0, unit: "item" },
+                    { id: Date.now() + 402, name: "שוקוסימו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 403, name: "הרשיז", quantity: 0, unit: "item" },
+                    { id: Date.now() + 404, name: "יוניקורן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 405, name: "פיסטוק דובאי", quantity: 0, unit: "item" },
+                    { id: Date.now() + 406, name: "וניל דובדבן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 407, name: "יוגורט", quantity: 0, unit: "item" },
+                    { id: Date.now() + 408, name: "מנגו סורבה ללס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 409, name: "תות סורבה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 410, name: "וניל ללס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 411, name: "פירות קפואים אננס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 412, name: "פירות קפואים בננה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 413, name: "פירות קפואים תות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 414, name: "פירות קפואים פירות יער", quantity: 0, unit: "item" },
+                    { id: Date.now() + 415, name: "פירות קפואים פטל", quantity: 0, unit: "item" },
+                    { id: Date.now() + 416, name: "פירות קפואים מנגו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 417, name: "פירות קפואים תמר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 418, name: "כוס לגלידה קטנה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 419, name: "כוס לגלידה בינוני", quantity: 0, unit: "item" },
+                    { id: Date.now() + 420, name: "כוס לגלידה גדול", quantity: 0, unit: "item" },
+                    { id: Date.now() + 421, name: "כפית טעימה צבע שחור", quantity: 0, unit: "item" },
+                    { id: Date.now() + 422, name: "חמאת בוטנים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 423, name: "אבקה להכנת סחלב", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 500,
+                name: "מיסטר שף - מאפים קפוא",
+                products: [
+                    { id: Date.now() + 501, name: "קרואסון חמאה גדול", quantity: 0, unit: "item" },
+                    { id: Date.now() + 502, name: "קרואסון שוקולד", quantity: 0, unit: "item" },
+                    { id: Date.now() + 503, name: "דונאטס", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 600,
+                name: "123 - משקאות קלים ואלכוהול",
+                products: [
+                    { id: Date.now() + 601, name: "קולה זכוכית", quantity: 0, unit: "item" },
+                    { id: Date.now() + 602, name: "קולה זירו זכוכית", quantity: 0, unit: "item" },
+                    { id: Date.now() + 603, name: "פלגרינו קטן זכוכית 250מל", quantity: 0, unit: "item" },
+                    { id: Date.now() + 604, name: "פלגרינו לימון", quantity: 0, unit: "item" },
+                    { id: Date.now() + 605, name: "פלגרינו תפוז", quantity: 0, unit: "item" },
+                    { id: Date.now() + 606, name: "מים זארוס פלסטיק 500מל", quantity: 0, unit: "item" },
+                    { id: Date.now() + 607, name: "סנגריה כשר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 608, name: "סחוט תפוז", quantity: 0, unit: "item" },
+                    { id: Date.now() + 609, name: "סחוט לימונדה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 610, name: "סחוט גזר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 611, name: "סחוט רימון", quantity: 0, unit: "item" },
+                    { id: Date.now() + 612, name: "סחוט תפוח דובדבן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 613, name: "סחוט תפוז גזר כורכום", quantity: 0, unit: "item" },
+                    { id: Date.now() + 614, name: "סחוט תפוח ליים גינגר", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 700,
+                name: "א.ב משקאות - טרופית ושתיה קלה",
+                products: [
+                    { id: Date.now() + 701, name: "טרופית", quantity: 0, unit: "item" },
+                    { id: Date.now() + 702, name: "סודה נורדיק", quantity: 0, unit: "item" },
+                    { id: Date.now() + 703, name: "סודה נורדיק לימון", quantity: 0, unit: "item" },
+                    { id: Date.now() + 704, name: "ענבים ENJOY", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 800,
+                name: "חיים לחם - לחם טרי ולחמניות",
+                products: [
+                    { id: Date.now() + 801, name: "לחמנית ביס לבן/דגנים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 802, name: "פיתה טוסט", quantity: 0, unit: "item" },
+                    { id: Date.now() + 803, name: "לחם קסטן דגנים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 804, name: "בייגלה רומני קשה (זעתר/מלח)", quantity: 0, unit: "item" },
+                    { id: Date.now() + 805, name: "לחמנית דגנים לסנדוויץ", quantity: 0, unit: "item" },
+                    { id: Date.now() + 806, name: "לחמנית בגט לסנדוויץ", quantity: 0, unit: "item" },
+                    { id: Date.now() + 807, name: "מחמצת אגוזים פרוס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 808, name: "מחמצת שיפון פרוס", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 900,
+                name: "קאלטר קוקיה - עוגיות טבעוניות",
+                products: [
+                    { id: Date.now() + 901, name: "ברואניז", quantity: 0, unit: "item" },
+                    { id: Date.now() + 902, name: "בלונדי פסיטוק", quantity: 0, unit: "item" },
+                    { id: Date.now() + 903, name: "קוביית חלווה שומשום שחור", quantity: 0, unit: "item" },
+                    { id: Date.now() + 904, name: "קוביית סניקרס חמאת בוטנים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 905, name: "קוביית פפררו רושה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 906, name: "עוגיה דמקה שוקולד", quantity: 0, unit: "item" },
+                    { id: Date.now() + 907, name: "עוגיה בייגלה לבן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 908, name: "עוגיה מאצה לבן", quantity: 0, unit: "item" },
+                    { id: Date.now() + 909, name: "עוגיה אוראו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 910, name: "עוגיה סוכריות עדשים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 911, name: "עוגיה טופי לוז", quantity: 0, unit: "item" },
+                    { id: Date.now() + 912, name: "עוגיה טחינה קינמון", quantity: 0, unit: "item" },
+                    { id: Date.now() + 913, name: "עוגיה שיבולת פיסטוק", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 1000,
+                name: "גרין טי - תה ומאצה",
+                products: [
+                    { id: Date.now() + 1001, name: "מאצה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1002, name: "היביסקוס ליים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1003, name: "היביסקוס ליים ללס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1004, name: "מדברי", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1005, name: "לואיזה נענע ליים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1006, name: "לואיזה נענע ליים ללס", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1007, name: "צאי מסאלה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1008, name: "פסיפלורה יפני", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 1100,
+                name: "שונות ללא ספק - תבלינים ושונות",
+                products: [
+                    { id: Date.now() + 1101, name: "שוקולית", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1102, name: "חמוציות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1103, name: "גרנולה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1104, name: "גרעיני דלעת גרעיני חמניה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1105, name: "פלפל שחור", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1106, name: "מלח", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1107, name: "סוכר", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1108, name: "אבקת מרק", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1109, name: "פסיטוק", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1110, name: "קוקוס קלוי", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1111, name: "קינואה", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 1200,
+                name: "פרפל - פרודוקטים לגלידה",
+                products: [
+                    { id: Date.now() + 1201, name: "גביע 270 משרוול", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1202, name: "גביע 210 משרוול", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1203, name: "כוס לגלידה לבן S", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1204, name: "כוס לגלידה לבן M", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1205, name: "כוס לגלידה לבן L", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1206, name: "סוכריות צבעוניות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1207, name: "סוכריות עדשים", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1208, name: "עוגיות דמוי אוראו", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1209, name: "כפית טעימה צבע שחור", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1210, name: "אבקה להכנת סחלב", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1211, name: "אייס קפה אבקה", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 1300,
+                name: "סמבהזון - אסאי",
+                products: [
+                    { id: Date.now() + 1301, name: "אסאי", quantity: 0, unit: "item" }
+                ]
+            },
+            {
+                id: Date.now() + 1400,
+                name: "פיצה מרקט - פיצה ומוצרים",
+                products: [
+                    { id: Date.now() + 1401, name: "פיצה לה פרימה קוטר 29", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1402, name: "פיצה לה פרימה קוטר 36", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1403, name: "גבינת מוצרלה מגורדת (עיברי)", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1404, name: "תבלין לפיצה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1405, name: "מיונז תלמה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1406, name: "קינואה", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1407, name: "רוטב עגבניות", quantity: 0, unit: "item" },
+                    { id: Date.now() + 1408, name: "קרטונים TA לפיצה קוטר 40", quantity: 0, unit: "item" }
+                ]
+            }
+        ];
+
+        async function importInventory() {
+            const btn = document.getElementById('importBtn');
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            btn.textContent = 'Importing...';
+            status.textContent = 'Connecting to Firebase...';
+
+            try {
+                const docRef = db.collection('locations').doc('isgav');
+
+                // STEP 1: Get existing data first (NEVER overwrite!)
+                status.textContent = 'Fetching existing data...';
+                const doc = await docRef.get();
+                const existingData = doc.exists ? doc.data() : { categories: [], taskLists: [] };
+
+                // Show what exists
+                const existingCount = existingData.categories ? existingData.categories.length : 0;
+                const existingTasks = existingData.taskLists ? existingData.taskLists.length : 0;
+
+                status.textContent = `Found ${existingCount} existing categories, ${existingTasks} task lists. Adding new categories...`;
+
+                // STEP 2: APPEND new categories (never replace!)
+                const mergedCategories = [...(existingData.categories || []), ...newCategories];
+
+                // STEP 3: Save with ALL existing data preserved
+                await docRef.set({
+                    ...existingData,              // Keep everything that exists
+                    categories: mergedCategories  // Only update categories array
+                });
+
+                status.textContent = 'Import successful!';
+                status.className = 'mb-4 text-green-600 font-bold';
+                btn.textContent = 'Done!';
+                btn.className = 'bg-green-500 text-white px-6 py-3 rounded-lg font-medium w-full';
+
+                // Count total items
+                const totalItems = newCategories.reduce((sum, cat) => sum + cat.products.length, 0);
+
+                result.innerHTML = `
+                    <div class="text-green-600">
+                        <p class="font-bold">Added ${newCategories.length} new categories with ${totalItems} items!</p>
+                        <p class="mt-2">Preserved: ${existingCount} existing categories, ${existingTasks} task lists</p>
+                        <ul class="mt-2 text-right max-h-60 overflow-y-auto">
+                            ${newCategories.map(c => `<li class="py-1">+ ${c.name} (${c.products.length} items)</li>`).join('')}
+                        </ul>
+                        <p class="mt-3 text-gray-600 font-bold">Check the app now!</p>
+                    </div>
+                `;
+            } catch (error) {
+                status.textContent = 'Error: ' + error.message;
+                status.className = 'mb-4 text-red-600';
+                btn.textContent = 'Retry';
+                btn.disabled = false;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
