@@ -1756,8 +1756,9 @@
         function schedulePrintSchedule() {
             const weekEnd = new Date(scheduleCurrentWeekStart);
             weekEnd.setDate(weekEnd.getDate() + 6);
-            const startStr = scheduleCurrentWeekStart.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
-            const endStr = weekEnd.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
+            // Use DD/MM/YYYY format to avoid RTL issues
+            const startStr = `${scheduleCurrentWeekStart.getDate()}/${scheduleCurrentWeekStart.getMonth() + 1}/${scheduleCurrentWeekStart.getFullYear()}`;
+            const endStr = `${weekEnd.getDate()}/${weekEnd.getMonth() + 1}/${weekEnd.getFullYear()}`;
 
             function getEmpWithHours(empId, day, shift) {
                 const emp = scheduleEmployees.find(e => e.id === empId);

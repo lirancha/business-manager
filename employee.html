@@ -1041,7 +1041,7 @@
             grid.innerHTML = scheduleDays.map((day, index) => {
                 const dayDate = new Date(weekStart);
                 dayDate.setDate(weekStart.getDate() + index);
-                const dateStr = dayDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+                const dateStr = `${dayDate.getDate()}/${dayDate.getMonth() + 1}`;
 
                 return `
                     <div class="day-card bg-white rounded-xl p-3 shadow">
