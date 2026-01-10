@@ -141,6 +141,9 @@
             <button id="tab-schedule" class="flex-1 py-3 text-center font-medium text-gray-500" onclick="switchTab('schedule')">
                 Schedule
             </button>
+            <button id="tab-reminders" class="flex-1 py-3 text-center font-medium text-gray-500" onclick="switchTab('reminders')">
+                Reminders
+            </button>
         </div>
     </header>
 
@@ -334,6 +337,90 @@
             <!-- Schedule Status Message -->
             <div id="schedule-status-message" class="hidden mt-4 p-4 rounded-xl text-center font-medium"></div>
         </div>
+
+        <!-- Reminders Tab -->
+        <div id="reminders-tab" class="py-2 hidden">
+            <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Reminders</h2>
+                    <div class="flex gap-2">
+                        <button onclick="testNotification()" class="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                            Test
+                        </button>
+                        <button onclick="requestNotificationPermission()" id="notification-btn" class="text-sm px-3 py-1 rounded-full bg-blue-100 text-blue-700">
+                            Enable Notifications
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Reminder Form -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                    <h3 class="font-medium text-gray-700 mb-3">Add New Reminder</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="reminder-title" placeholder="Reminder text (e.g., Order bread for tomorrow)"
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" dir="rtl">
+
+                        <div class="flex gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="reminder-type" value="recurring" checked onchange="toggleReminderType()">
+                                <span class="text-sm">Recurring</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="reminder-type" value="one-time" onchange="toggleReminderType()">
+                                <span class="text-sm">One-time</span>
+                            </label>
+                        </div>
+
+                        <!-- Time picker -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-600">Time:</label>
+                            <input type="time" id="reminder-time" value="20:00" class="px-3 py-2 border rounded-lg">
+                        </div>
+
+                        <!-- Days selection (for recurring) -->
+                        <div id="recurring-days" class="flex flex-wrap gap-2">
+                            <label class="text-sm text-gray-600 w-full">Days:</label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="sunday" class="reminder-day"> <span class="text-xs">Sun</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="monday" class="reminder-day"> <span class="text-xs">Mon</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="tuesday" class="reminder-day"> <span class="text-xs">Tue</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="wednesday" class="reminder-day"> <span class="text-xs">Wed</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="thursday" class="reminder-day"> <span class="text-xs">Thu</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="friday" class="reminder-day"> <span class="text-xs">Fri</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="saturday" class="reminder-day"> <span class="text-xs">Sat</span>
+                            </label>
+                        </div>
+
+                        <!-- Date picker (for one-time) -->
+                        <div id="one-time-date" class="hidden">
+                            <label class="text-sm text-gray-600">Date:</label>
+                            <input type="date" id="reminder-date" class="px-3 py-2 border rounded-lg ml-2">
+                        </div>
+
+                        <button onclick="addReminder()" class="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">
+                            Add Reminder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reminders List -->
+                <div id="reminders-list" class="space-y-2">
+                    <p class="text-gray-400 text-center py-4">No reminders yet</p>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Order Modal -->
@@ -498,14 +585,17 @@
             const inventoryTab = document.getElementById('inventory-tab');
             const tasksTab = document.getElementById('tasks-tab');
             const scheduleTab = document.getElementById('schedule-tab');
+            const remindersTab = document.getElementById('reminders-tab');
             const tabInventory = document.getElementById('tab-inventory');
             const tabTasks = document.getElementById('tab-tasks');
             const tabSchedule = document.getElementById('tab-schedule');
+            const tabReminders = document.getElementById('tab-reminders');
 
             // Hide all tabs
             inventoryTab.classList.add('hidden');
             tasksTab.classList.add('hidden');
             scheduleTab.classList.add('hidden');
+            remindersTab.classList.add('hidden');
 
             // Reset all tab buttons
             tabInventory.classList.remove('tab-active');
@@ -514,6 +604,8 @@
             tabTasks.classList.add('text-gray-500');
             tabSchedule.classList.remove('tab-active');
             tabSchedule.classList.add('text-gray-500');
+            tabReminders.classList.remove('tab-active');
+            tabReminders.classList.add('text-gray-500');
 
             // Show selected tab
             if (tab === 'inventory') {
@@ -530,6 +622,12 @@
                 tabSchedule.classList.remove('text-gray-500');
                 // Initialize schedule data when tab is opened
                 scheduleInit();
+            } else if (tab === 'reminders') {
+                remindersTab.classList.remove('hidden');
+                tabReminders.classList.add('tab-active');
+                tabReminders.classList.remove('text-gray-500');
+                // Initialize reminders when tab is opened
+                initReminders();
             }
         }
 
@@ -1892,10 +1990,343 @@
         // END SCHEDULE SYSTEM
         // =====================================================
 
+        // =====================================================
+        // REMINDERS SYSTEM
+        // =====================================================
+
+        let reminders = [];
+        let reminderCheckInterval = null;
+        let shownReminders = new Set(); // Track reminders shown today
+
+        // Initialize reminders
+        async function initReminders() {
+            await loadReminders();
+            updateNotificationButton();
+            startReminderCheck();
+        }
+
+        // Load reminders from Firebase
+        async function loadReminders() {
+            try {
+                const snapshot = await db.collection('reminders').orderBy('createdAt', 'desc').get();
+                reminders = [];
+                snapshot.forEach(doc => {
+                    reminders.push({ id: doc.id, ...doc.data() });
+                });
+                renderReminders();
+            } catch (error) {
+                console.error('Error loading reminders:', error);
+            }
+        }
+
+        // Render reminders list
+        function renderReminders() {
+            const container = document.getElementById('reminders-list');
+            if (reminders.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">No reminders yet</p>';
+                return;
+            }
+
+            const dayNames = { sunday: 'Sun', monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat' };
+
+            container.innerHTML = reminders.map(reminder => {
+                const daysText = reminder.type === 'recurring'
+                    ? (reminder.days || []).map(d => dayNames[d]).join(', ')
+                    : reminder.date;
+
+                return `
+                <div class="bg-gray-50 rounded-lg p-3 flex items-center justify-between ${!reminder.enabled ? 'opacity-50' : ''}">
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800" dir="rtl">${reminder.title}</p>
+                        <p class="text-sm text-gray-500">
+                            ${reminder.time} • ${reminder.type === 'recurring' ? daysText : reminder.date}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${reminder.enabled ? 'checked' : ''}
+                                   onchange="toggleReminder('${reminder.id}')" class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                        <button onclick="deleteReminder('${reminder.id}')" class="text-red-500 hover:text-red-700 p-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // Toggle reminder type (recurring/one-time)
+        function toggleReminderType() {
+            const type = document.querySelector('input[name="reminder-type"]:checked').value;
+            document.getElementById('recurring-days').classList.toggle('hidden', type !== 'recurring');
+            document.getElementById('one-time-date').classList.toggle('hidden', type !== 'one-time');
+        }
+
+        // Add new reminder
+        async function addReminder() {
+            const title = document.getElementById('reminder-title').value.trim();
+            const time = document.getElementById('reminder-time').value;
+            const type = document.querySelector('input[name="reminder-type"]:checked').value;
+
+            if (!title) {
+                alert('Please enter reminder text');
+                return;
+            }
+
+            if (!time) {
+                alert('Please select a time');
+                return;
+            }
+
+            const reminder = {
+                title,
+                time,
+                type,
+                enabled: true,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (type === 'recurring') {
+                const days = Array.from(document.querySelectorAll('.reminder-day:checked')).map(cb => cb.value);
+                if (days.length === 0) {
+                    alert('Please select at least one day');
+                    return;
+                }
+                reminder.days = days;
+            } else {
+                const date = document.getElementById('reminder-date').value;
+                if (!date) {
+                    alert('Please select a date');
+                    return;
+                }
+                reminder.date = date;
+            }
+
+            try {
+                await db.collection('reminders').add(reminder);
+                document.getElementById('reminder-title').value = '';
+                document.querySelectorAll('.reminder-day').forEach(cb => cb.checked = false);
+                await loadReminders();
+            } catch (error) {
+                console.error('Error adding reminder:', error);
+                alert('Error adding reminder');
+            }
+        }
+
+        // Toggle reminder enabled/disabled
+        async function toggleReminder(id) {
+            const reminder = reminders.find(r => r.id === id);
+            if (!reminder) return;
+
+            try {
+                await db.collection('reminders').doc(id).update({
+                    enabled: !reminder.enabled
+                });
+                await loadReminders();
+            } catch (error) {
+                console.error('Error toggling reminder:', error);
+            }
+        }
+
+        // Delete reminder
+        async function deleteReminder(id) {
+            if (!confirm('Delete this reminder?')) return;
+
+            try {
+                await db.collection('reminders').doc(id).delete();
+                await loadReminders();
+            } catch (error) {
+                console.error('Error deleting reminder:', error);
+            }
+        }
+
+        // Request notification permission
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                alert('This browser does not support notifications');
+                return;
+            }
+
+            console.log('[Reminders] Current permission:', Notification.permission);
+
+            try {
+                const permission = await Notification.requestPermission();
+                console.log('[Reminders] Permission result:', permission);
+
+                // Update button based on the returned permission
+                updateNotificationButton();
+
+                if (permission === 'granted') {
+                    // Try to send a test notification
+                    new Notification('Zucca Café', {
+                        body: 'Notifications enabled! You will receive reminders.',
+                        icon: '🔔'
+                    });
+                    // Start reminder checking now
+                    startReminderCheck();
+                } else if (permission === 'denied') {
+                    alert('Notifications were blocked. Please enable them in your browser settings.');
+                } else {
+                    alert('Permission status: ' + permission + '\n\nIf testing locally, try the GitHub Pages URL instead.');
+                }
+            } catch (error) {
+                console.error('[Reminders] Permission error:', error);
+                alert('Error requesting permission: ' + error.message);
+            }
+        }
+
+        // Update notification button state
+        function updateNotificationButton() {
+            const btn = document.getElementById('notification-btn');
+            if (!('Notification' in window)) {
+                btn.textContent = 'Not Supported';
+                btn.classList.remove('bg-blue-100', 'text-blue-700');
+                btn.classList.add('bg-gray-100', 'text-gray-500');
+                btn.disabled = true;
+            } else if (Notification.permission === 'granted') {
+                btn.textContent = 'Notifications On';
+                btn.classList.remove('bg-blue-100', 'text-blue-700');
+                btn.classList.add('bg-green-100', 'text-green-700');
+            } else if (Notification.permission === 'denied') {
+                btn.textContent = 'Notifications Blocked';
+                btn.classList.remove('bg-blue-100', 'text-blue-700');
+                btn.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+
+        // Start checking reminders every minute
+        function startReminderCheck() {
+            if (reminderCheckInterval) clearInterval(reminderCheckInterval);
+
+            // Reset shown reminders at midnight
+            const now = new Date();
+            const midnight = new Date(now);
+            midnight.setHours(24, 0, 0, 0);
+            const msUntilMidnight = midnight - now;
+            setTimeout(() => {
+                shownReminders.clear();
+            }, msUntilMidnight);
+
+            // Check immediately
+            checkReminders();
+
+            // Check every minute
+            reminderCheckInterval = setInterval(checkReminders, 60000);
+        }
+
+        // Check if any reminders should trigger
+        function checkReminders() {
+            if (Notification.permission !== 'granted') {
+                console.log('[Reminders] Notifications not granted');
+                return;
+            }
+
+            if (reminders.length === 0) {
+                console.log('[Reminders] No reminders to check');
+                return;
+            }
+
+            const now = new Date();
+            const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const currentDay = dayNames[now.getDay()];
+            // Use LOCAL date, not UTC
+            const currentDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+            console.log(`[Reminders] Checking at ${currentTime} on ${currentDay} (${currentDate})`);
+
+            reminders.forEach(reminder => {
+                if (!reminder.enabled) return;
+
+                const reminderKey = `${reminder.id}-${currentDate}`;
+                if (shownReminders.has(reminderKey)) return;
+
+                console.log(`[Reminders] Checking "${reminder.title}": time=${reminder.time} vs ${currentTime}`);
+
+                if (reminder.time !== currentTime) return;
+
+                let shouldTrigger = false;
+
+                if (reminder.type === 'recurring') {
+                    console.log(`[Reminders] Recurring - days=${(reminder.days||[]).join(',')} vs ${currentDay}`);
+                    if (reminder.days && reminder.days.includes(currentDay)) {
+                        shouldTrigger = true;
+                    }
+                } else {
+                    console.log(`[Reminders] One-time - date=${reminder.date} vs ${currentDate}`);
+                    if (reminder.date === currentDate) {
+                        shouldTrigger = true;
+                    }
+                }
+
+                if (shouldTrigger) {
+                    console.log(`[Reminders] TRIGGERING: ${reminder.title}`);
+                    showNotification(reminder);
+                    shownReminders.add(reminderKey);
+                }
+            });
+        }
+
+        // Show notification
+        function showNotification(reminder) {
+            new Notification('Zucca Café - Reminder', {
+                body: reminder.title,
+                icon: '🔔',
+                tag: reminder.id,
+                requireInteraction: true
+            });
+
+            // Also play a sound if possible
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleAYAgP/k6M6XPg==');
+                audio.volume = 0.5;
+                audio.play().catch(() => {});
+            } catch (e) {}
+        }
+
+        // Test notification - to verify notifications work
+        function testNotification() {
+            if (!('Notification' in window)) {
+                alert('This browser does not support notifications');
+                return;
+            }
+
+            if (Notification.permission !== 'granted') {
+                alert('Please enable notifications first by clicking "Enable Notifications"');
+                return;
+            }
+
+            new Notification('Zucca Café - Test', {
+                body: 'If you see this, notifications are working!',
+                icon: '🔔',
+                tag: 'test-notification'
+            });
+
+            console.log('[Reminders] Test notification sent');
+        }
+
+        // =====================================================
+        // END REMINDERS SYSTEM
+        // =====================================================
+
         // Initialize
         updateLocationUI();
         loadState();
         initTouchDrag();
+
+        // ALWAYS load reminders on page load (so they're ready when tab opens)
+        loadReminders().then(() => {
+            console.log('[Reminders] Loaded on page start:', reminders.length, 'reminders');
+            // Start checking if notifications are enabled
+            if ('Notification' in window && Notification.permission === 'granted') {
+                console.log('[Reminders] Starting reminder checks...');
+                startReminderCheck();
+            }
+        });
     </script>
 </body>
 </html>
