@@ -1868,10 +1868,13 @@
         function scheduleUpdateWeekDisplay() {
             const weekEnd = new Date(scheduleCurrentWeekStart);
             weekEnd.setDate(weekEnd.getDate() + 6);
-            const startStr = scheduleCurrentWeekStart.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
-            const endStr = weekEnd.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+            // Use DD/MM format to avoid RTL issues with Hebrew dates
+            const startDay = scheduleCurrentWeekStart.getDate();
+            const startMonth = scheduleCurrentWeekStart.getMonth() + 1;
+            const endDay = weekEnd.getDate();
+            const endMonth = weekEnd.getMonth() + 1;
             document.getElementById('schedule-week-label').textContent = 'Week Schedule';
-            document.getElementById('schedule-week-dates').textContent = `${startStr} - ${endStr}`;
+            document.getElementById('schedule-week-dates').textContent = `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
         }
 
         async function scheduleInit() {
