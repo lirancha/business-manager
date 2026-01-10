@@ -762,10 +762,10 @@
                 return `
                 <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
                     <div class="${color.bg} text-white px-4 py-3 cursor-pointer" onclick="toggleTaskList(${taskList.id})">
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center" dir="rtl">
                             <div class="flex items-center gap-2">
-                                <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
-                                <h3 class="font-bold" dir="rtl">${taskList.name}</h3>
+                                <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&lt;</span>
+                                <h3 class="font-bold">${taskList.name}</h3>
                             </div>
                             <span class="${color.text} text-sm">${progress.completed}/${progress.total}</span>
                         </div>
