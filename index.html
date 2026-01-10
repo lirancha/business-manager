@@ -421,35 +421,51 @@
                 </div>
 
                 <!-- Telegram Settings -->
-                <div class="bg-gray-50 rounded-lg p-4 mt-4">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-medium text-gray-700">Telegram Notifications</h3>
-                        <span id="telegram-status" class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Not configured</span>
+                <div id="telegram-section" class="bg-gray-50 rounded-lg p-4 mt-4">
+                    <!-- Collapsed state (when configured) -->
+                    <div id="telegram-collapsed" class="hidden">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <span class="text-green-600">✓</span>
+                                <span class="font-medium text-gray-700">Telegram Connected</span>
+                            </div>
+                            <button onclick="expandTelegramSettings()" class="text-sm text-blue-600 hover:text-blue-800">
+                                Edit
+                            </button>
+                        </div>
                     </div>
-                    <p class="text-sm text-gray-500 mb-3">Get reminders via Telegram message (works on iPhone!)</p>
 
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-sm text-gray-600">Bot Token:</label>
-                            <input type="text" id="telegram-bot-token" placeholder="123456789:ABC..."
-                                   class="w-full px-3 py-2 border rounded-lg text-sm mt-1" autocomplete="off">
+                    <!-- Expanded state (form) -->
+                    <div id="telegram-expanded">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-medium text-gray-700">Telegram Notifications</h3>
+                            <span id="telegram-status" class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Not configured</span>
                         </div>
-                        <div>
-                            <label class="text-sm text-gray-600">Chat ID:</label>
-                            <input type="text" id="telegram-chat-id" placeholder="Your chat ID"
-                                   class="w-full px-3 py-2 border rounded-lg text-sm mt-1" autocomplete="off">
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="saveTelegramSettings()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-                                Save Settings
+                        <p class="text-sm text-gray-500 mb-3">Get reminders via Telegram message (works on iPhone!)</p>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-sm text-gray-600">Bot Token:</label>
+                                <input type="text" id="telegram-bot-token" placeholder="123456789:ABC..."
+                                       class="w-full px-3 py-2 border rounded-lg text-sm mt-1" autocomplete="off">
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-600">Chat ID:</label>
+                                <input type="text" id="telegram-chat-id" placeholder="Your chat ID"
+                                       class="w-full px-3 py-2 border rounded-lg text-sm mt-1" autocomplete="off">
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="saveTelegramSettings()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+                                    Save Settings
+                                </button>
+                                <button onclick="testTelegram()" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700">
+                                    Test Telegram
+                                </button>
+                            </div>
+                            <button onclick="showTelegramHelp()" class="w-full text-blue-600 text-sm underline">
+                                How to get Bot Token and Chat ID?
                             </button>
-                            <button onclick="testTelegram()" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700">
-                                Test Telegram
-                            </button>
                         </div>
-                        <button onclick="showTelegramHelp()" class="w-full text-blue-600 text-sm underline">
-                            How to get Bot Token and Chat ID?
-                        </button>
                     </div>
                 </div>
             </div>
@@ -2364,15 +2380,38 @@
             const tokenInput = document.getElementById('telegram-bot-token');
             const chatIdInput = document.getElementById('telegram-chat-id');
             const statusEl = document.getElementById('telegram-status');
+            const collapsedEl = document.getElementById('telegram-collapsed');
+            const expandedEl = document.getElementById('telegram-expanded');
 
             if (tokenInput) tokenInput.value = telegramBotToken;
             if (chatIdInput) chatIdInput.value = telegramChatId;
 
+            // If configured, show collapsed state
             if (telegramBotToken && telegramChatId) {
+                if (collapsedEl) collapsedEl.classList.remove('hidden');
+                if (expandedEl) expandedEl.classList.add('hidden');
                 if (statusEl) {
                     statusEl.textContent = 'Configured';
                     statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
                 }
+            } else {
+                // Not configured, show expanded form
+                if (collapsedEl) collapsedEl.classList.add('hidden');
+                if (expandedEl) expandedEl.classList.remove('hidden');
+            }
+        }
+
+        // Expand Telegram settings (show form)
+        function expandTelegramSettings() {
+            document.getElementById('telegram-collapsed').classList.add('hidden');
+            document.getElementById('telegram-expanded').classList.remove('hidden');
+        }
+
+        // Collapse Telegram settings (show connected status)
+        function collapseTelegramSettings() {
+            if (telegramBotToken && telegramChatId) {
+                document.getElementById('telegram-collapsed').classList.remove('hidden');
+                document.getElementById('telegram-expanded').classList.add('hidden');
             }
         }
 
@@ -2396,7 +2435,10 @@
             statusEl.textContent = 'Configured';
             statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
 
-            alert('Telegram settings saved! Click "Test Telegram" to verify.');
+            // Collapse settings after saving
+            collapseTelegramSettings();
+
+            alert('Telegram settings saved!');
         }
 
         // Send message via Telegram
