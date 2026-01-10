@@ -35,6 +35,64 @@
         }
         .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
         .task-item { transition: background-color 0.15s, box-shadow 0.15s; }
+        /* Schedule system styles */
+        .schedule-subtab-active { background-color: #7c3aed; color: white; }
+        .shift-cell { min-height: 70px; vertical-align: top; }
+        .employee-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            margin: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chip-available { background-color: #dcfce7; color: #166534; }
+        .chip-available:hover { background-color: #bbf7d0; }
+        .chip-partial { background-color: #fef3c7; color: #92400e; }
+        .chip-partial:hover { background-color: #fde68a; }
+        .chip-assigned { background-color: #3b82f6; color: white; }
+        .chip-assigned:hover { background-color: #2563eb; }
+        .chip-not-available { background-color: #fee2e2; color: #991b1b; opacity: 0.6; }
+        .chip-not-submitted { background-color: #e5e7eb; color: #6b7280; }
+        .slot-box {
+            min-height: 60px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 8px;
+            background: #f9fafb;
+        }
+        .slot-box.has-assignment {
+            border-style: solid;
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .remove-btn {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            margin-right: 2px;
+        }
+        .remove-btn:hover {
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+        }
+        .add-employee-pool {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
         .product-name {
             flex: 1;
             min-width: 0;
@@ -75,10 +133,13 @@
         <!-- Tabs -->
         <div class="flex border-b">
             <button id="tab-inventory" class="flex-1 py-3 text-center font-medium tab-active" onclick="switchTab('inventory')">
-                Inventory Check
+                Inventory
             </button>
             <button id="tab-tasks" class="flex-1 py-3 text-center font-medium text-gray-500" onclick="switchTab('tasks')">
-                Daily Tasks
+                Tasks
+            </button>
+            <button id="tab-schedule" class="flex-1 py-3 text-center font-medium text-gray-500" onclick="switchTab('schedule')">
+                Schedule
             </button>
         </div>
     </header>
@@ -131,6 +192,147 @@
                     Share All Tasks
                 </button>
             </div>
+        </div>
+
+        <!-- Schedule Tab -->
+        <div id="schedule-tab" class="py-2 hidden">
+            <!-- Week Navigation -->
+            <div class="bg-white rounded-xl p-4 mb-4 shadow">
+                <div class="flex justify-between items-center">
+                    <button onclick="scheduleChangeWeek(-1)" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <div class="text-center">
+                        <div id="schedule-week-label" class="font-bold text-gray-800">Week Schedule</div>
+                        <div id="schedule-week-dates" class="text-sm text-gray-500"></div>
+                    </div>
+                    <button onclick="scheduleChangeWeek(1)" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-tabs -->
+            <div class="bg-white rounded-xl shadow mb-4">
+                <div class="flex gap-1 p-1">
+                    <button onclick="scheduleShowSubTab('employees')" id="schedule-subtab-employees" class="flex-1 py-2 px-3 rounded-lg text-center font-medium text-sm schedule-subtab-active">
+                        Employees
+                    </button>
+                    <button onclick="scheduleShowSubTab('availability')" id="schedule-subtab-availability" class="flex-1 py-2 px-3 rounded-lg text-center font-medium text-sm text-gray-500">
+                        Availability
+                    </button>
+                    <button onclick="scheduleShowSubTab('builder')" id="schedule-subtab-builder" class="flex-1 py-2 px-3 rounded-lg text-center font-medium text-sm text-gray-500">
+                        Build
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-content: Employees -->
+            <div id="schedule-content-employees" class="schedule-subcontent">
+                <div class="bg-white rounded-xl p-4 shadow mb-4">
+                    <h2 class="font-bold text-gray-800 mb-3">Add Employee</h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="schedule-new-employee-name" placeholder="Name" class="flex-1 p-2 border rounded-lg">
+                        <input type="tel" id="schedule-new-employee-phone" placeholder="Phone" class="flex-1 p-2 border rounded-lg">
+                        <button onclick="scheduleAddEmployee()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">+</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-4 shadow">
+                    <h2 class="font-bold text-gray-800 mb-3">Employee List</h2>
+                    <div id="schedule-employee-list" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-white rounded-xl p-4 shadow mt-4">
+                    <h2 class="font-bold text-gray-800 mb-3">Shift Hours Settings</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-20 font-medium text-sm">Morning:</span>
+                            <input type="time" id="schedule-hours-morning-start" class="p-2 border rounded-lg text-sm" value="06:30">
+                            <span>-</span>
+                            <input type="time" id="schedule-hours-morning-end" class="p-2 border rounded-lg text-sm" value="12:30">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-20 font-medium text-sm">Afternoon:</span>
+                            <input type="time" id="schedule-hours-afternoon-start" class="p-2 border rounded-lg text-sm" value="12:30">
+                            <span>-</span>
+                            <input type="time" id="schedule-hours-afternoon-end" class="p-2 border rounded-lg text-sm" value="16:30">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-20 font-medium text-sm">Evening:</span>
+                            <input type="time" id="schedule-hours-evening-start" class="p-2 border rounded-lg text-sm" value="16:30">
+                            <span>-</span>
+                            <input type="time" id="schedule-hours-evening-end" class="p-2 border rounded-lg text-sm" value="20:30">
+                        </div>
+                        <button onclick="scheduleSaveShiftHours()" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700">
+                            Save Shift Hours
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button onclick="scheduleSendReminders()" class="w-full bg-green-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-green-600">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        Send Availability Reminder
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-content: Availability -->
+            <div id="schedule-content-availability" class="schedule-subcontent hidden">
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm" id="schedule-availability-table">
+                            <!-- Rendered dynamically -->
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-4 bg-white rounded-xl p-4 shadow">
+                    <h3 class="font-bold text-gray-800 mb-2">Legend</h3>
+                    <div class="flex flex-wrap gap-3 text-sm">
+                        <span class="employee-chip chip-available">Available (full)</span>
+                        <span class="employee-chip chip-partial">Partial hours</span>
+                        <span class="employee-chip chip-not-available">Not Available</span>
+                        <span class="employee-chip chip-not-submitted">Not submitted</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-content: Builder -->
+            <div id="schedule-content-builder" class="schedule-subcontent hidden">
+                <div class="bg-white rounded-xl shadow overflow-hidden mb-4">
+                    <div class="bg-gray-800 text-white p-3 flex justify-between items-center">
+                        <span class="font-bold">Build Schedule</span>
+                        <button onclick="scheduleSaveSchedule()" class="bg-green-500 px-4 py-2 rounded-lg text-sm hover:bg-green-600 font-medium">
+                            Save Schedule
+                        </button>
+                    </div>
+                    <div id="schedule-builder" class="p-4">
+                        <!-- Schedule builder rendered here -->
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="schedulePrintSchedule()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-purple-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        Export PDF
+                    </button>
+                    <button onclick="scheduleSendScheduleToAll()" class="flex-1 bg-green-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-green-600">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        Send via WhatsApp
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Status Message -->
+            <div id="schedule-status-message" class="hidden mt-4 p-4 rounded-xl text-center font-medium"></div>
         </div>
     </main>
 
@@ -295,23 +497,39 @@
         function switchTab(tab) {
             const inventoryTab = document.getElementById('inventory-tab');
             const tasksTab = document.getElementById('tasks-tab');
+            const scheduleTab = document.getElementById('schedule-tab');
             const tabInventory = document.getElementById('tab-inventory');
             const tabTasks = document.getElementById('tab-tasks');
+            const tabSchedule = document.getElementById('tab-schedule');
 
+            // Hide all tabs
+            inventoryTab.classList.add('hidden');
+            tasksTab.classList.add('hidden');
+            scheduleTab.classList.add('hidden');
+
+            // Reset all tab buttons
+            tabInventory.classList.remove('tab-active');
+            tabInventory.classList.add('text-gray-500');
+            tabTasks.classList.remove('tab-active');
+            tabTasks.classList.add('text-gray-500');
+            tabSchedule.classList.remove('tab-active');
+            tabSchedule.classList.add('text-gray-500');
+
+            // Show selected tab
             if (tab === 'inventory') {
                 inventoryTab.classList.remove('hidden');
-                tasksTab.classList.add('hidden');
                 tabInventory.classList.add('tab-active');
                 tabInventory.classList.remove('text-gray-500');
-                tabTasks.classList.remove('tab-active');
-                tabTasks.classList.add('text-gray-500');
-            } else {
+            } else if (tab === 'tasks') {
                 tasksTab.classList.remove('hidden');
-                inventoryTab.classList.add('hidden');
                 tabTasks.classList.add('tab-active');
                 tabTasks.classList.remove('text-gray-500');
-                tabInventory.classList.remove('tab-active');
-                tabInventory.classList.add('text-gray-500');
+            } else if (tab === 'schedule') {
+                scheduleTab.classList.remove('hidden');
+                tabSchedule.classList.add('tab-active');
+                tabSchedule.classList.remove('text-gray-500');
+                // Initialize schedule data when tab is opened
+                scheduleInit();
             }
         }
 
@@ -1118,6 +1336,557 @@
         document.getElementById('share-modal').addEventListener('click', (e) => {
             if (e.target.id === 'share-modal') closeShareModal();
         });
+
+        // =====================================================
+        // SCHEDULE SYSTEM
+        // =====================================================
+
+        // Schedule Configuration
+        const scheduleDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const scheduleDayLabelsHe = {
+            sunday: 'ראשון', monday: 'שני', tuesday: 'שלישי',
+            wednesday: 'רביעי', thursday: 'חמישי', friday: 'שישי', saturday: 'שבת'
+        };
+        const scheduleShifts = ['morning', 'afternoon', 'evening'];
+        const scheduleShiftLabelsHe = { morning: 'בוקר', afternoon: 'צהריים', evening: 'ערב' };
+        const scheduleLocations = ['isgav', 'frankfurt'];
+
+        // Default shift hours
+        const scheduleDefaultShiftHours = {
+            morning: { start: '06:30', end: '12:30' },
+            afternoon: { start: '12:30', end: '16:30' },
+            evening: { start: '16:30', end: '20:30' }
+        };
+
+        // Schedule State
+        let scheduleCurrentWeekStart = null;
+        let scheduleEmployees = [];
+        let scheduleWeekData = null;
+        let scheduleFinalSchedule = {};
+        let scheduleShiftHours = { ...scheduleDefaultShiftHours };
+        let scheduleInitialized = false;
+
+        function scheduleGetWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day;
+            return new Date(d.setDate(diff));
+        }
+
+        function scheduleFormatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function scheduleGetWeekId() {
+            return scheduleFormatDate(scheduleCurrentWeekStart);
+        }
+
+        function scheduleFormatTime(time) {
+            if (!time) return '';
+            const [h, m] = time.split(':');
+            return `${parseInt(h)}:${m}`;
+        }
+
+        // Initialize final schedule structure
+        function scheduleInitFinalSchedule() {
+            scheduleFinalSchedule = {};
+            scheduleDays.forEach(day => {
+                scheduleFinalSchedule[day] = {};
+                scheduleShifts.forEach(shift => {
+                    scheduleFinalSchedule[day][shift] = { isgav: [], frankfurt: [] };
+                });
+            });
+        }
+
+        // Schedule sub-tab navigation
+        function scheduleShowSubTab(tabName) {
+            document.querySelectorAll('.schedule-subcontent').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="schedule-subtab-"]').forEach(el => {
+                el.classList.remove('schedule-subtab-active');
+                el.classList.add('text-gray-500');
+            });
+
+            document.getElementById(`schedule-content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`schedule-subtab-${tabName}`).classList.add('schedule-subtab-active');
+            document.getElementById(`schedule-subtab-${tabName}`).classList.remove('text-gray-500');
+
+            if (tabName === 'availability') scheduleRenderAvailabilityTable();
+            if (tabName === 'builder') scheduleRenderScheduleBuilder();
+        }
+
+        // Load employees and shift hours
+        async function scheduleLoadEmployees() {
+            try {
+                const doc = await db.collection('employee-schedules').doc('config').get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    scheduleEmployees = data.employees || [];
+                    if (data.shiftHours) {
+                        scheduleShiftHours = data.shiftHours;
+                        scheduleUpdateShiftHoursInputs();
+                    }
+                } else {
+                    scheduleEmployees = [];
+                }
+                scheduleRenderEmployeeList();
+            } catch (error) {
+                console.error('Error loading employees:', error);
+            }
+        }
+
+        function scheduleUpdateShiftHoursInputs() {
+            document.getElementById('schedule-hours-morning-start').value = scheduleShiftHours.morning.start;
+            document.getElementById('schedule-hours-morning-end').value = scheduleShiftHours.morning.end;
+            document.getElementById('schedule-hours-afternoon-start').value = scheduleShiftHours.afternoon.start;
+            document.getElementById('schedule-hours-afternoon-end').value = scheduleShiftHours.afternoon.end;
+            document.getElementById('schedule-hours-evening-start').value = scheduleShiftHours.evening.start;
+            document.getElementById('schedule-hours-evening-end').value = scheduleShiftHours.evening.end;
+        }
+
+        async function scheduleSaveEmployees() {
+            try {
+                await db.collection('employee-schedules').doc('config').set({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
+            } catch (error) {
+                console.error('Error saving employees:', error);
+            }
+        }
+
+        async function scheduleSaveShiftHours() {
+            scheduleShiftHours = {
+                morning: { start: document.getElementById('schedule-hours-morning-start').value, end: document.getElementById('schedule-hours-morning-end').value },
+                afternoon: { start: document.getElementById('schedule-hours-afternoon-start').value, end: document.getElementById('schedule-hours-afternoon-end').value },
+                evening: { start: document.getElementById('schedule-hours-evening-start').value, end: document.getElementById('schedule-hours-evening-end').value }
+            };
+            try {
+                await db.collection('employee-schedules').doc('config').set({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
+                scheduleShowStatus('Shift hours saved!', 'success');
+            } catch (error) {
+                scheduleShowStatus('Error saving shift hours', 'error');
+            }
+        }
+
+        async function scheduleAddEmployee() {
+            const nameInput = document.getElementById('schedule-new-employee-name');
+            const phoneInput = document.getElementById('schedule-new-employee-phone');
+            const name = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            if (!name) return;
+
+            scheduleEmployees.push({ id: Date.now(), name, phone });
+            await scheduleSaveEmployees();
+            scheduleRenderEmployeeList();
+            nameInput.value = '';
+            phoneInput.value = '';
+        }
+
+        async function scheduleDeleteEmployee(id) {
+            if (!confirm('Delete this employee?')) return;
+            scheduleEmployees = scheduleEmployees.filter(e => e.id !== id);
+            await scheduleSaveEmployees();
+            scheduleRenderEmployeeList();
+        }
+
+        function scheduleRenderEmployeeList() {
+            const container = document.getElementById('schedule-employee-list');
+            if (scheduleEmployees.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">No employees yet.</p>';
+                return;
+            }
+            container.innerHTML = scheduleEmployees.map(emp => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <span class="font-medium">${emp.name}</span>
+                        <span class="text-gray-500 text-sm mr-2">${emp.phone || 'No phone'}</span>
+                    </div>
+                    <button onclick="scheduleDeleteEmployee(${emp.id})" class="text-red-500 hover:text-red-700">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        async function scheduleLoadWeekData() {
+            try {
+                const weekId = scheduleGetWeekId();
+                const doc = await db.collection('employee-schedules').doc(weekId).get();
+                if (doc.exists) {
+                    scheduleWeekData = doc.data();
+                    if (scheduleWeekData.finalSchedule) {
+                        scheduleFinalSchedule = scheduleWeekData.finalSchedule;
+                    } else {
+                        scheduleInitFinalSchedule();
+                    }
+                } else {
+                    scheduleWeekData = { availability: {} };
+                    scheduleInitFinalSchedule();
+                }
+            } catch (error) {
+                scheduleWeekData = { availability: {} };
+                scheduleInitFinalSchedule();
+            }
+        }
+
+        // Get employee availability info
+        function scheduleGetEmployeeAvailability(empId, day, shift) {
+            const avail = scheduleWeekData?.availability?.[empId]?.[day]?.[shift];
+            if (!avail) return { available: false, customHours: null, submitted: !!scheduleWeekData?.availability?.[empId] };
+
+            // Handle both old (boolean) and new (object) format
+            if (typeof avail === 'boolean') {
+                return { available: avail, customHours: null, submitted: true };
+            }
+            return { available: avail.available, customHours: avail.customHours, submitted: true };
+        }
+
+        // Render availability table with hours in header
+        function scheduleRenderAvailabilityTable() {
+            const table = document.getElementById('schedule-availability-table');
+            const availability = scheduleWeekData?.availability || {};
+
+            // Build header with hours
+            let html = `
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-2 text-right font-bold">Day</th>
+                        ${scheduleShifts.map(shift => `
+                            <th class="p-2 text-center">
+                                <div class="font-bold">${scheduleShiftLabelsHe[shift]}</div>
+                                <div class="text-xs text-gray-500 font-normal">${scheduleFormatTime(scheduleShiftHours[shift].start)} - ${scheduleFormatTime(scheduleShiftHours[shift].end)}</div>
+                            </th>
+                        `).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            // Build rows
+            scheduleDays.forEach(day => {
+                html += `<tr class="border-t">
+                    <td class="p-2 font-medium bg-gray-50">${scheduleDayLabelsHe[day]}</td>`;
+
+                scheduleShifts.forEach(shift => {
+                    html += `<td class="p-2 shift-cell">`;
+
+                    scheduleEmployees.forEach(emp => {
+                        const info = scheduleGetEmployeeAvailability(emp.id, day, shift);
+
+                        if (!info.submitted) {
+                            html += `<span class="employee-chip chip-not-submitted">${emp.name}?</span>`;
+                        } else if (info.available) {
+                            if (info.customHours) {
+                                html += `<span class="employee-chip chip-partial" title="${scheduleFormatTime(info.customHours.start)}-${scheduleFormatTime(info.customHours.end)}">
+                                    ${emp.name}
+                                    <span class="text-[10px]">(${scheduleFormatTime(info.customHours.start)}-${scheduleFormatTime(info.customHours.end)})</span>
+                                </span>`;
+                            } else {
+                                html += `<span class="employee-chip chip-available">${emp.name}</span>`;
+                            }
+                        } else {
+                            html += `<span class="employee-chip chip-not-available">${emp.name}</span>`;
+                        }
+                    });
+
+                    html += `</td>`;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody>`;
+            table.innerHTML = html;
+        }
+
+        // Render schedule builder with clickable chips
+        function scheduleRenderScheduleBuilder() {
+            const container = document.getElementById('schedule-builder');
+            const availability = scheduleWeekData?.availability || {};
+
+            let html = '';
+
+            scheduleDays.forEach(day => {
+                html += `
+                    <div class="mb-6 border-b pb-4">
+                        <h3 class="font-bold text-lg mb-3 text-gray-800">${scheduleDayLabelsHe[day]}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                `;
+
+                scheduleShifts.forEach(shift => {
+                    const hoursDisplay = `${scheduleFormatTime(scheduleShiftHours[shift].start)} - ${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+
+                    html += `
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="font-medium text-gray-700 mb-2">${scheduleShiftLabelsHe[shift]} <span class="text-xs text-gray-500">${hoursDisplay}</span></div>
+
+                            ${scheduleLocations.map(loc => {
+                                const locLabel = loc === 'isgav' ? 'Isgav' : 'Frankfurt';
+                                const assigned = scheduleFinalSchedule[day]?.[shift]?.[loc] || [];
+                                const hasAssignment = assigned.length > 0;
+
+                                // Build assigned chips
+                                let assignedChips = assigned.map(empId => {
+                                    const emp = scheduleEmployees.find(e => e.id === empId);
+                                    if (!emp) return '';
+                                    return `<span class="employee-chip chip-assigned" onclick="scheduleRemoveFromShift('${day}', '${shift}', '${loc}', ${empId})">
+                                        <span class="remove-btn">&times;</span>${emp.name}
+                                    </span>`;
+                                }).join('');
+
+                                // Build available employees pool
+                                let availablePool = scheduleEmployees
+                                    .filter(emp => !assigned.includes(emp.id))
+                                    .map(emp => {
+                                        const info = scheduleGetEmployeeAvailability(emp.id, day, shift);
+                                        let chipClass = info.available ? (info.customHours ? 'chip-partial' : 'chip-available') : 'chip-not-available';
+                                        let hoursNote = info.customHours ? ` (${scheduleFormatTime(info.customHours.start)}-${scheduleFormatTime(info.customHours.end)})` : '';
+
+                                        return `<span class="employee-chip ${chipClass}"
+                                                      onclick="scheduleAddToShift('${day}', '${shift}', '${loc}', ${emp.id})"
+                                                      title="${info.available ? 'Available' : 'Not available'}${hoursNote}">
+                                            ${emp.name}${hoursNote}
+                                        </span>`;
+                                    }).join('');
+
+                                return `
+                                    <div class="mb-2">
+                                        <div class="text-xs text-gray-500 mb-1">${locLabel}:</div>
+                                        <div class="slot-box ${hasAssignment ? 'has-assignment' : ''}">
+                                            ${assignedChips || '<span class="text-gray-400 text-xs">Click employee below to add</span>'}
+                                        </div>
+                                        <div class="add-employee-pool">
+                                            ${availablePool || '<span class="text-gray-400 text-xs">No employees</span>'}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Add employee to shift
+        function scheduleAddToShift(day, shift, location, empId) {
+            if (!scheduleFinalSchedule[day]) scheduleFinalSchedule[day] = {};
+            if (!scheduleFinalSchedule[day][shift]) scheduleFinalSchedule[day][shift] = { isgav: [], frankfurt: [] };
+
+            if (!scheduleFinalSchedule[day][shift][location].includes(empId)) {
+                scheduleFinalSchedule[day][shift][location].push(empId);
+                scheduleRenderScheduleBuilder();
+            }
+        }
+
+        // Remove employee from shift
+        function scheduleRemoveFromShift(day, shift, location, empId) {
+            if (scheduleFinalSchedule[day]?.[shift]?.[location]) {
+                scheduleFinalSchedule[day][shift][location] = scheduleFinalSchedule[day][shift][location].filter(id => id !== empId);
+                scheduleRenderScheduleBuilder();
+            }
+        }
+
+        async function scheduleSaveSchedule() {
+            try {
+                const weekId = scheduleGetWeekId();
+                const docRef = db.collection('employee-schedules').doc(weekId);
+                const doc = await docRef.get();
+                const existingData = doc.exists ? doc.data() : { weekStart: weekId, availability: {} };
+
+                await docRef.set({ ...existingData, finalSchedule: scheduleFinalSchedule });
+                scheduleShowStatus('Schedule saved!', 'success');
+            } catch (error) {
+                scheduleShowStatus('Error saving schedule', 'error');
+            }
+        }
+
+        function scheduleSendReminders() {
+            const empsWithPhone = scheduleEmployees.filter(e => e.phone);
+            if (empsWithPhone.length === 0) {
+                alert('No employees with phone numbers');
+                return;
+            }
+
+            const appUrl = 'https://lirancha.github.io/business-manager/employee.html';
+            const message = encodeURIComponent(`Hi! Please submit your availability for next week.\n\nOpen: ${appUrl}\n\nThanks!`);
+
+            empsWithPhone.forEach((emp, index) => {
+                setTimeout(() => {
+                    const phone = emp.phone.replace(/[^0-9]/g, '');
+                    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+                }, index * 500);
+            });
+        }
+
+        function scheduleSendScheduleToAll() {
+            const empsWithPhone = scheduleEmployees.filter(e => e.phone);
+            if (empsWithPhone.length === 0) {
+                alert('No employees with phone numbers');
+                return;
+            }
+
+            empsWithPhone.forEach((emp, index) => {
+                setTimeout(() => {
+                    const empShifts = scheduleGetEmployeeShifts(emp.id);
+                    const message = encodeURIComponent(
+                        `Hi ${emp.name}!\n\nYour shifts for this week:\n\n` +
+                        (empShifts.length > 0 ? empShifts.join('\n') : 'No shifts assigned') +
+                        `\n\nThanks!`
+                    );
+                    const phone = emp.phone.replace(/[^0-9]/g, '');
+                    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+                }, index * 500);
+            });
+        }
+
+        function scheduleGetEmployeeShifts(empId) {
+            const result = [];
+            scheduleDays.forEach(day => {
+                scheduleShifts.forEach(shift => {
+                    const hours = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+                    scheduleLocations.forEach(loc => {
+                        if (scheduleFinalSchedule[day]?.[shift]?.[loc]?.includes(empId)) {
+                            result.push(`${scheduleDayLabelsHe[day]} - ${scheduleShiftLabelsHe[shift]} (${hours}) @ ${loc === 'isgav' ? 'Isgav' : 'Frankfurt'}`);
+                        }
+                    });
+                });
+            });
+            return result;
+        }
+
+        function schedulePrintSchedule() {
+            const weekEnd = new Date(scheduleCurrentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            const startStr = scheduleCurrentWeekStart.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
+            const endStr = weekEnd.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            function getEmpWithHours(empId, day, shift) {
+                const emp = scheduleEmployees.find(e => e.id === empId);
+                if (!emp) return '';
+
+                const avail = scheduleWeekData?.availability?.[empId]?.[day]?.[shift];
+                const defaultHrs = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+
+                if (avail && typeof avail === 'object' && avail.customHours) {
+                    const customHrs = `${scheduleFormatTime(avail.customHours.start)}-${scheduleFormatTime(avail.customHours.end)}`;
+                    return `${emp.name} (${customHrs})`;
+                }
+                return `${emp.name} (${defaultHrs})`;
+            }
+
+            let tableRows = '';
+            scheduleDays.forEach(day => {
+                tableRows += `<tr>
+                    <td class="day-cell">${scheduleDayLabelsHe[day]}</td>`;
+
+                scheduleShifts.forEach(shift => {
+                    const isgavEmps = (scheduleFinalSchedule[day]?.[shift]?.isgav || [])
+                        .map(id => getEmpWithHours(id, day, shift))
+                        .filter(n => n)
+                        .join(', ') || '-';
+                    const frankfurtEmps = (scheduleFinalSchedule[day]?.[shift]?.frankfurt || [])
+                        .map(id => getEmpWithHours(id, day, shift))
+                        .filter(n => n)
+                        .join(', ') || '-';
+
+                    tableRows += `<td class="shift-cell">
+                        <div class="location"><strong>Isgav:</strong> ${isgavEmps}</div>
+                        <div class="location"><strong>Frankfurt:</strong> ${frankfurtEmps}</div>
+                    </td>`;
+                });
+
+                tableRows += `</tr>`;
+            });
+
+            const html = `
+            <!DOCTYPE html>
+            <html lang="he" dir="rtl">
+            <head>
+                <meta charset="UTF-8">
+                <title>Zucca - Weekly Schedule</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; max-width: 1000px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #7c3aed; }
+                    .header h1 { color: #7c3aed; margin: 0 0 10px 0; font-size: 28px; }
+                    .header .dates { color: #666; font-size: 16px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: right; }
+                    th { background: #7c3aed; color: white; font-weight: bold; }
+                    th .hours { font-weight: normal; font-size: 12px; opacity: 0.9; }
+                    .day-cell { background: #f3f4f6; font-weight: bold; width: 80px; }
+                    .shift-cell { vertical-align: top; min-width: 150px; }
+                    .location { margin-bottom: 5px; font-size: 14px; }
+                    .location:last-child { margin-bottom: 0; }
+                    tr:nth-child(even) { background: #fafafa; }
+                    @media print { body { padding: 10px; } .header h1 { font-size: 24px; } th, td { padding: 8px 6px; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Zucca - Weekly Schedule</h1>
+                    <div class="dates">${startStr} - ${endStr}</div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>יום</th>
+                            <th>בוקר<br><span class="hours">${scheduleFormatTime(scheduleShiftHours.morning.start)} - ${scheduleFormatTime(scheduleShiftHours.morning.end)}</span></th>
+                            <th>צהריים<br><span class="hours">${scheduleFormatTime(scheduleShiftHours.afternoon.start)} - ${scheduleFormatTime(scheduleShiftHours.afternoon.end)}</span></th>
+                            <th>ערב<br><span class="hours">${scheduleFormatTime(scheduleShiftHours.evening.start)} - ${scheduleFormatTime(scheduleShiftHours.evening.end)}</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </body>
+            </html>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => { printWindow.print(); }, 250);
+        }
+
+        function scheduleShowStatus(message, type) {
+            const status = document.getElementById('schedule-status-message');
+            status.textContent = message;
+            status.className = `mt-4 p-4 rounded-xl text-center font-medium ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            status.classList.remove('hidden');
+            setTimeout(() => status.classList.add('hidden'), 3000);
+        }
+
+        function scheduleChangeWeek(direction) {
+            scheduleCurrentWeekStart.setDate(scheduleCurrentWeekStart.getDate() + (direction * 7));
+            scheduleUpdateWeekDisplay();
+            scheduleLoadWeekData().then(() => {
+                scheduleRenderAvailabilityTable();
+                scheduleRenderScheduleBuilder();
+            });
+        }
+
+        function scheduleUpdateWeekDisplay() {
+            const weekEnd = new Date(scheduleCurrentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            const startStr = scheduleCurrentWeekStart.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+            const endStr = weekEnd.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+            document.getElementById('schedule-week-label').textContent = 'Week Schedule';
+            document.getElementById('schedule-week-dates').textContent = `${startStr} - ${endStr}`;
+        }
+
+        async function scheduleInit() {
+            if (scheduleInitialized) return;
+            scheduleInitialized = true;
+            scheduleCurrentWeekStart = scheduleGetWeekStart(new Date());
+            scheduleUpdateWeekDisplay();
+            await scheduleLoadEmployees();
+            await scheduleLoadWeekData();
+            scheduleInitFinalSchedule();
+        }
+
+        // =====================================================
+        // END SCHEDULE SYSTEM
+        // =====================================================
 
         // Initialize
         updateLocationUI();
