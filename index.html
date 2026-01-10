@@ -1089,6 +1089,119 @@
             }
         }
 
+        // =====================================================
+        // TASK LIST (CATEGORY) DRAG AND DROP
+        // =====================================================
+
+        let taskListDragId = null;
+        let taskListDragElement = null;
+        let taskListDragTimeout = null;
+        let isTaskListDragging = false;
+        let taskListStartY = 0;
+
+        function initTaskListTouchDrag() {
+            document.addEventListener('touchstart', handleTaskListTouchStart, { passive: true });
+            document.addEventListener('touchend', handleTaskListTouchEnd, { passive: true });
+            document.addEventListener('touchmove', handleTaskListTouchMoveCheck, { passive: true });
+        }
+
+        function handleTaskListTouchMoveCheck(e) {
+            if (taskListDragTimeout && !isTaskListDragging) {
+                const touch = e.touches[0];
+                const deltaY = Math.abs(touch.clientY - taskListStartY);
+                if (deltaY > 10) {
+                    clearTimeout(taskListDragTimeout);
+                    taskListDragTimeout = null;
+                }
+            }
+        }
+
+        function handleTaskListTouchStart(e) {
+            const header = e.target.closest('.tasklist-header');
+            if (!header) return;
+
+            // Don't start drag if touching delete button
+            if (e.target.closest('button')) return;
+
+            taskListDragId = parseInt(header.dataset.tasklistId);
+            taskListDragElement = header.closest('.tasklist-item');
+            taskListStartY = e.touches[0].clientY;
+
+            taskListDragTimeout = setTimeout(() => {
+                isTaskListDragging = true;
+                taskListDragElement.classList.add('ring-4', 'ring-blue-500', 'shadow-xl', 'z-50');
+                navigator.vibrate && navigator.vibrate(100);
+                document.addEventListener('touchmove', handleTaskListTouchMove, { passive: false });
+            }, 500);
+        }
+
+        function handleTaskListTouchMove(e) {
+            if (!isTaskListDragging || !taskListDragId) return;
+            e.preventDefault();
+
+            const touchY = e.touches[0].clientY;
+            const taskListItems = Array.from(document.querySelectorAll('.tasklist-item'));
+
+            for (const item of taskListItems) {
+                const itemId = parseInt(item.dataset.tasklistId);
+                if (itemId === taskListDragId) continue;
+
+                const rect = item.getBoundingClientRect();
+                const middle = rect.top + rect.height / 2;
+
+                if (touchY > rect.top && touchY < rect.bottom) {
+                    const fromIndex = state.taskLists.findIndex(l => l.id === taskListDragId);
+                    const toIndex = state.taskLists.findIndex(l => l.id === itemId);
+
+                    if ((fromIndex < toIndex && touchY > middle) || (fromIndex > toIndex && touchY < middle)) {
+                        reorderTaskLists(taskListDragId, itemId);
+                        setTimeout(() => {
+                            const newElement = document.querySelector(`.tasklist-item[data-tasklist-id="${taskListDragId}"]`);
+                            if (newElement) {
+                                newElement.classList.add('ring-4', 'ring-blue-500', 'shadow-xl', 'z-50');
+                                taskListDragElement = newElement;
+                            }
+                        }, 0);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function handleTaskListTouchEnd(e) {
+            clearTimeout(taskListDragTimeout);
+            taskListDragTimeout = null;
+
+            if (isTaskListDragging) {
+                document.removeEventListener('touchmove', handleTaskListTouchMove);
+                if (taskListDragElement) {
+                    taskListDragElement.classList.remove('ring-4', 'ring-blue-500', 'shadow-xl', 'z-50');
+                }
+                saveState();
+            }
+
+            isTaskListDragging = false;
+            taskListDragId = null;
+            taskListDragElement = null;
+        }
+
+        function reorderTaskLists(fromId, toId) {
+            if (fromId === toId) return;
+
+            const fromIndex = state.taskLists.findIndex(l => l.id === fromId);
+            const toIndex = state.taskLists.findIndex(l => l.id === toId);
+
+            if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+                const [removed] = state.taskLists.splice(fromIndex, 1);
+                state.taskLists.splice(toIndex, 0, removed);
+                renderTaskLists();
+            }
+        }
+
+        // =====================================================
+        // END TASK LIST DRAG AND DROP
+        // =====================================================
+
         function resetAllTasks(listId) {
             const taskList = state.taskLists.find(l => l.id === listId);
             if (taskList) {
@@ -1391,8 +1504,8 @@
                              title="${c}"></button>`
                 ).join('');
                 return `
-                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden">
-                    <div class="${color.bg} text-white px-4 py-3 cursor-pointer" onclick="toggleTaskList(${taskList.id})">
+                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden tasklist-item" data-tasklist-id="${taskList.id}">
+                    <div class="tasklist-header ${color.bg} text-white px-4 py-3 cursor-pointer" data-tasklist-id="${taskList.id}" onclick="toggleTaskList(${taskList.id})">
                         <div class="flex justify-between items-center" dir="rtl">
                             <div class="flex items-center gap-2">
                                 <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&lt;</span>
@@ -2532,6 +2645,7 @@ STEP 4: Enter in App
         updateLocationUI();
         loadState();
         initTouchDrag();
+        initTaskListTouchDrag();
 
         // ALWAYS load reminders on page load (so they're ready when tab opens)
         loadReminders().then(() => {
