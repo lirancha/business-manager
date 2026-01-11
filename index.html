@@ -525,6 +525,8 @@
                 <button onclick="closeShareModal()" class="text-gray-500 text-2xl">&times;</button>
             </div>
             <div class="p-4 overflow-y-auto flex-1">
+                <textarea id="share-note" placeholder="Add a note (optional)..."
+                    class="w-full p-3 border rounded-lg mb-3 text-sm resize-none" rows="2"></textarea>
                 <pre id="share-text" class="bg-gray-100 p-4 rounded-lg text-sm whitespace-pre-wrap"></pre>
             </div>
             <div class="p-4 border-t flex gap-2">
@@ -1384,22 +1386,29 @@
 
         function closeShareModal() {
             document.getElementById('share-modal').classList.add('hidden');
+            document.getElementById('share-note').value = '';
+        }
+
+        function getShareTextWithNote() {
+            const note = document.getElementById('share-note').value.trim();
+            const taskText = document.getElementById('share-text').textContent;
+            return note ? `${note}\n\n${taskText}` : taskText;
         }
 
         function copyTaskList() {
-            const text = document.getElementById('share-text').textContent;
+            const text = getShareTextWithNote();
             navigator.clipboard.writeText(text).then(() => {
                 alert('Task list copied to clipboard!');
             });
         }
 
         function shareTasksWhatsApp() {
-            const text = encodeURIComponent(document.getElementById('share-text').textContent);
+            const text = encodeURIComponent(getShareTextWithNote());
             window.open(`https://wa.me/?text=${text}`, '_blank');
         }
 
         function shareTasksEmail() {
-            const text = encodeURIComponent(document.getElementById('share-text').textContent);
+            const text = encodeURIComponent(getShareTextWithNote());
             const subject = encodeURIComponent(`Daily Tasks - ${new Date().toLocaleDateString()}`);
             window.open(`mailto:?subject=${subject}&body=${text}`, '_blank');
         }
