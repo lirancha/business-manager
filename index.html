@@ -1312,7 +1312,7 @@
             const progress = getTaskListProgress(taskList);
             let taskText = `${taskList.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
             taskList.tasks.forEach(task => {
-                const status = task.done ? '[x]' : '[ ]';
+                const status = task.done ? '[✓]' : '[ ]';
                 taskText += `${status} ${task.text}\n`;
             });
 
@@ -1372,7 +1372,7 @@
                     taskText += `  (No tasks)\n`;
                 } else {
                     taskList.tasks.forEach(task => {
-                        const status = task.done ? '[x]' : '[ ]';
+                        const status = task.done ? '[✓]' : '[ ]';
                         taskText += `${status} ${task.text}\n`;
                     });
                     taskText += `Progress: ${progress.completed}/${progress.total} (${progress.percent}%)\n`;
