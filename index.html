@@ -1313,10 +1313,10 @@
             let taskText = `${taskList.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
             taskList.tasks.forEach(task => {
                 const status = task.done ? '[✓]' : '[ ]';
-                taskText += `${status} ${task.text}\n`;
+                taskText += `\u200E${status} ${task.text}\n`;
             });
 
-            taskText += `\n${'─'.repeat(20)}\nProgress: ${progress.completed}/${progress.total} completed (${progress.percent}%)`;
+            taskText += `\n\u200EProgress: ${progress.completed}/${progress.total} completed (${progress.percent}%)`;
 
             document.getElementById('share-text').textContent = taskText;
             document.getElementById('share-modal').classList.remove('hidden');
@@ -1373,9 +1373,9 @@
                 } else {
                     taskList.tasks.forEach(task => {
                         const status = task.done ? '[✓]' : '[ ]';
-                        taskText += `${status} ${task.text}\n`;
+                        taskText += `\u200E${status} ${task.text}\n`;
                     });
-                    taskText += `Progress: ${progress.completed}/${progress.total} (${progress.percent}%)\n`;
+                    taskText += `\u200EProgress: ${progress.completed}/${progress.total} (${progress.percent}%)\n`;
                 }
             });
 
