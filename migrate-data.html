@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restore Data to Isgav</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full text-center">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Restore Data to Isgav</h1>
+        <div id="status" class="mb-4 text-gray-600">Ready to restore...</div>
+        <button id="migrateBtn" onclick="migrateData()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium w-full">
+            Click to Restore Data
+        </button>
+        <div id="result" class="mt-4 text-sm text-left"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
+            authDomain: "zucca-mang.firebaseapp.com",
+            projectId: "zucca-mang",
+            storageBucket: "zucca-mang.firebasestorage.app",
+            messagingSenderId: "423632065920",
+            appId: "1:423632065920:web:43c340defd3fe33442dd65"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function migrateData() {
+            const btn = document.getElementById('migrateBtn');
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            btn.textContent = 'Restoring...';
+            status.textContent = 'Connecting to Firebase...';
+
+            try {
+                // Step 1: Read from old location (business/data)
+                status.textContent = 'Reading data from business/data...';
+                const oldDoc = await db.collection('business').doc('data').get();
+
+                if (!oldDoc.exists) {
+                    throw new Error('No data found at business/data');
+                }
+
+                const oldData = oldDoc.data();
+                const categories = oldData.categories || [];
+                const taskLists = oldData.taskLists || [];
+
+                status.textContent = `Found ${categories.length} categories and ${taskLists.length} task lists`;
+
+                // Step 2: Backup current isgav data (if any)
+                status.textContent = 'Creating backup...';
+                const currentIsgav = await db.collection('locations').doc('isgav').get();
+                if (currentIsgav.exists) {
+                    await db.collection('backups').doc('isgav_before_restore_' + Date.now()).set({
+                        ...currentIsgav.data(),
+                        backupTime: new Date().toISOString(),
+                        reason: 'Before data restore'
+                    });
+                }
+
+                // Step 3: Write to new location (locations/isgav)
+                status.textContent = 'Writing data to locations/isgav...';
+                await db.collection('locations').doc('isgav').set({
+                    categories: categories,
+                    taskLists: taskLists
+                });
+
+                status.textContent = 'Restore successful!';
+                status.className = 'mb-4 text-green-600 font-bold';
+                btn.textContent = 'Done!';
+                btn.className = 'bg-green-500 text-white px-6 py-3 rounded-lg font-medium w-full';
+
+                result.innerHTML = `
+                    <div class="text-green-600">
+                        <p class="font-bold">Data restored successfully!</p>
+                        <p class="mt-2">Restored:</p>
+                        <ul class="mt-1 ml-4 list-disc">
+                            <li>${categories.length} inventory categories</li>
+                            <li>${taskLists.length} task lists</li>
+                        </ul>
+                        <p class="mt-3 text-gray-600">Now open your app and check!</p>
+                    </div>
+                `;
+            } catch (error) {
+                status.textContent = 'Error: ' + error.message;
+                status.className = 'mb-4 text-red-600';
+                btn.textContent = 'Retry';
+                btn.disabled = false;
+                btn.className = 'bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium w-full';
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

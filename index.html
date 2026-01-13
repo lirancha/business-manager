@@ -607,28 +607,51 @@
                     state.categories = data.categories || [];
                     state.taskLists = data.taskLists || [];
                 } else {
-                    // First time - create initial empty data
+                    // Document doesn't exist - show empty but DON'T save empty data
+                    // This prevents accidentally overwriting data due to race conditions
                     state.categories = [];
                     state.taskLists = [];
-                    saveState();
+                    console.log("No data found for location: " + currentLocation);
                 }
                 renderAll();
             }, (error) => {
                 console.error("Error loading data:", error);
-                // Fallback to empty state
+                // Fallback to empty state but DON'T save
                 renderAll();
             });
         }
 
-        // Save to Firestore
-        function saveState() {
-            db.collection('locations').doc(currentLocation).set({
-                categories: state.categories,
-                taskLists: state.taskLists
-            }).catch((error) => {
+        // Save to Firestore with protection against data loss
+        async function saveState() {
+            // SAFETY: Never save if both arrays are empty - prevents accidental data wipe
+            if (state.categories.length === 0 && state.taskLists.length === 0) {
+                console.warn("Blocked saving empty state - this prevents accidental data loss");
+                return;
+            }
+
+            try {
+                // Create backup before saving (keeps last 5 backups)
+                const currentDoc = await db.collection('locations').doc(currentLocation).get();
+                if (currentDoc.exists) {
+                    const existingData = currentDoc.data();
+                    if (existingData.categories?.length > 0 || existingData.taskLists?.length > 0) {
+                        await db.collection('backups').add({
+                            ...existingData,
+                            location: currentLocation,
+                            backupTime: new Date().toISOString()
+                        });
+                    }
+                }
+
+                // Now save the new data
+                await db.collection('locations').doc(currentLocation).set({
+                    categories: state.categories,
+                    taskLists: state.taskLists
+                });
+            } catch (error) {
                 console.error("Error saving data:", error);
                 alert("Error saving. Please check your connection.");
-            });
+            }
         }
 
         // Tab Switching

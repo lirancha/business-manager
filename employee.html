@@ -352,15 +352,37 @@
             });
         }
 
-        // Save to Firestore
-        function saveState() {
-            db.collection('locations').doc(currentLocation).set({
-                categories: state.categories,
-                taskLists: state.taskLists
-            }).catch((error) => {
+        // Save to Firestore with protection against data loss
+        async function saveState() {
+            // SAFETY: Never save if both arrays are empty - prevents accidental data wipe
+            if (state.categories.length === 0 && state.taskLists.length === 0) {
+                console.warn("Blocked saving empty state - this prevents accidental data loss");
+                return;
+            }
+
+            try {
+                // Create backup before saving
+                const currentDoc = await db.collection('locations').doc(currentLocation).get();
+                if (currentDoc.exists) {
+                    const existingData = currentDoc.data();
+                    if (existingData.categories?.length > 0 || existingData.taskLists?.length > 0) {
+                        await db.collection('backups').add({
+                            ...existingData,
+                            location: currentLocation,
+                            backupTime: new Date().toISOString()
+                        });
+                    }
+                }
+
+                // Now save the new data
+                await db.collection('locations').doc(currentLocation).set({
+                    categories: state.categories,
+                    taskLists: state.taskLists
+                });
+            } catch (error) {
                 console.error("Error saving data:", error);
                 alert("Error saving. Please check your connection.");
-            });
+            }
         }
 
         // Tab Switching
