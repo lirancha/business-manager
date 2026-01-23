@@ -23,9 +23,10 @@ Business Manager is a restaurant management app for Zucca Café with multi-locat
 - Vanilla JavaScript (ES6+) with inline `<script>` tags
 - Tailwind CSS v3 via CDN
 - AWS API Gateway + Lambda (`lambda/index.js`)
-- AWS DynamoDB (4 tables: locations, schedules, reminders, backups)
+- AWS DynamoDB (5 tables: locations, schedules, reminders, backups, sent-reminders)
 - Polling-based sync via `api-client.js` (5-second interval)
-- Browser Notification API + Telegram Bot API for reminders
+- Server-side reminders via Lambda + EventBridge cron (works 24/7)
+- Telegram Bot API for notifications (credentials in AWS Secrets Manager)
 - No authentication (public access)
 
 **API config** is in each HTML file - look for `API_BASE_URL` near the top of the `<script>` tag.
@@ -69,7 +70,26 @@ business-manager-reminders/
 
 business-manager-backups/
   └── id: "{backupId}" → { categories, taskLists, location, backupTime }
+
+business-manager-sent-reminders/
+  └── id: "{reminderId}-{DD-MM-YYYY}" → { reminderId, sentAt, expiresAt (TTL) }
 ```
+
+## AWS Resources
+
+**Lambda Functions:**
+- `business-manager-api` - Main API handler (API Gateway backend)
+- `business-manager-reminder-checker` - Cron-triggered reminder checker
+
+**EventBridge:**
+- `business-manager-reminder-cron` - Triggers reminder checker every minute
+
+**Secrets Manager:**
+- `business-manager/telegram` - Telegram bot token and chat ID
+
+**IAM Roles:**
+- `business-manager-lambda-role` - For main API Lambda
+- `business-manager-reminder-checker-role` - For reminder checker Lambda
 
 ## Data Flow
 
@@ -99,6 +119,7 @@ Key functions: `saveState()`, `loadState()`, `switchLocation(locationId)`, `swit
 - `api.getScheduleConfig()` / `api.saveScheduleConfig(data)` - Employees & shift hours
 - `api.getScheduleWeek(weekId)` / `api.saveScheduleWeek(weekId, data)` - Weekly schedules
 - `api.listReminders()` / `api.createReminder(data)` / `api.updateReminder(id, data)` / `api.deleteReminder(id)` - Reminders
+- `api.getTelegramSettings()` / `api.saveTelegramSettings(botToken, chatId)` / `api.testTelegram()` - Telegram config
 
 ## Data Protection
 
@@ -116,3 +137,49 @@ Key functions: `saveState()`, `loadState()`, `switchLocation(locationId)`, `swit
 - Long-press gesture (500ms) for +5/-5 quantity adjustments
 - Touch-optimized with haptic feedback via Vibration API
 - Viewport configured for iOS (`viewport-fit=cover`)
+
+## Reminder System (Server-Side)
+
+Reminders work 24/7 without the browser being open:
+
+```
+EventBridge (every minute) → reminder-checker Lambda → Telegram Bot API
+                                      ↓
+                              DynamoDB (reminders table)
+                                      ↓
+                              sent-reminders table (prevents duplicates)
+```
+
+**Flow:**
+1. EventBridge triggers `business-manager-reminder-checker` every minute
+2. Lambda gets Telegram credentials from Secrets Manager
+3. Scans reminders table for enabled reminders
+4. Filters by current time (Israel timezone) and day/date
+5. Checks sent-reminders table to prevent duplicate sends
+6. Sends Telegram notification
+7. Records in sent-reminders with 7-day TTL
+8. One-time reminders auto-disable after sending
+
+**Day names (Hebrew):** ראשון, שני, שלישי, רביעי, חמישי, שישי, שבת
+
+---
+
+## Checkpoint: 2026-01-23
+
+**Commit:** `f490421` - Move reminder notifications from browser to AWS Lambda + EventBridge cron
+
+**What's working:**
+- Full inventory management (categories, products, quantities)
+- Task lists with 8 colors, drag-to-reorder
+- Employee schedule system (availability, final schedule)
+- Server-side reminders via Telegram (works 24/7)
+- Multi-location support (Isgav, Frankfurt)
+- Real-time sync across devices (5-second polling)
+- Data protection (blocks empty saves, auto-backups)
+
+**AWS Infrastructure:**
+- API Gateway: `https://98mctlbso0.execute-api.eu-central-1.amazonaws.com/prod`
+- Region: `eu-central-1`
+- Account: `770493140072`
+
+**Telegram:** Configured and tested - notifications sent successfully even with browser closed.
