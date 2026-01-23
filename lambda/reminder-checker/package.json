@@ -1,10 +1,9 @@
 {
-  "name": "business-manager-lambda",
+  "name": "business-manager-reminder-checker",
   "version": "1.0.0",
-  "description": "AWS Lambda backend for Business Manager app",
+  "description": "Lambda function to check and send reminder notifications",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "package": "zip -r function.zip index.js node_modules package.json"
   },
   "dependencies": {

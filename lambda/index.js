@@ -18,10 +18,15 @@ const {
     QueryCommand,
     ScanCommand
 } = require('@aws-sdk/lib-dynamodb');
+const { SecretsManagerClient, GetSecretValueCommand, PutSecretValueCommand, CreateSecretCommand } = require('@aws-sdk/client-secrets-manager');
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'eu-central-1' });
 const docClient = DynamoDBDocumentClient.from(client);
+
+// Initialize Secrets Manager client
+const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION || 'eu-central-1' });
+const TELEGRAM_SECRET_NAME = 'business-manager/telegram';
 
 // Table names
 const TABLE_PREFIX = process.env.DYNAMODB_TABLE_PREFIX || 'business-manager';
@@ -105,6 +110,17 @@ exports.handler = async (event) => {
         if (path === '/backups') {
             if (method === 'POST') return await createBackup(body);
             if (method === 'GET') return await listBackups();
+        }
+
+        // /settings/telegram
+        if (path === '/settings/telegram') {
+            if (method === 'GET') return await getTelegramSettings();
+            if (method === 'PUT') return await saveTelegramSettings(body);
+        }
+
+        // /telegram/test
+        if (path === '/telegram/test') {
+            if (method === 'POST') return await testTelegram();
         }
 
         return response(404, { error: 'Not found' });
@@ -372,6 +388,117 @@ async function listBackups() {
     });
 
     return response(200, items);
+}
+
+// =====================================================
+// TELEGRAM SETTINGS
+// =====================================================
+
+async function getTelegramSettings() {
+    try {
+        const result = await secretsClient.send(new GetSecretValueCommand({
+            SecretId: TELEGRAM_SECRET_NAME
+        }));
+
+        const secret = JSON.parse(result.SecretString);
+        // Don't expose full credentials, just confirm they exist
+        return response(200, {
+            configured: !!(secret.botToken && secret.chatId),
+            chatId: secret.chatId ? `****${secret.chatId.slice(-4)}` : null
+        });
+    } catch (error) {
+        if (error.name === 'ResourceNotFoundException') {
+            return response(200, { configured: false, chatId: null });
+        }
+        throw error;
+    }
+}
+
+async function saveTelegramSettings(data) {
+    if (!data || !data.botToken || !data.chatId) {
+        return response(400, { error: 'Missing required fields: botToken, chatId' });
+    }
+
+    const secretValue = JSON.stringify({
+        botToken: data.botToken,
+        chatId: data.chatId
+    });
+
+    try {
+        // Try to update existing secret
+        await secretsClient.send(new PutSecretValueCommand({
+            SecretId: TELEGRAM_SECRET_NAME,
+            SecretString: secretValue
+        }));
+    } catch (error) {
+        if (error.name === 'ResourceNotFoundException') {
+            // Secret doesn't exist, create it
+            await secretsClient.send(new CreateSecretCommand({
+                Name: TELEGRAM_SECRET_NAME,
+                SecretString: secretValue,
+                Description: 'Telegram bot credentials for Business Manager reminders'
+            }));
+        } else {
+            throw error;
+        }
+    }
+
+    return response(200, {
+        success: true,
+        message: 'Telegram settings saved',
+        chatId: `****${data.chatId.slice(-4)}`
+    });
+}
+
+async function testTelegram() {
+    // Get credentials from Secrets Manager
+    let botToken, chatId;
+    try {
+        const result = await secretsClient.send(new GetSecretValueCommand({
+            SecretId: TELEGRAM_SECRET_NAME
+        }));
+        const secret = JSON.parse(result.SecretString);
+        botToken = secret.botToken;
+        chatId = secret.chatId;
+    } catch (error) {
+        if (error.name === 'ResourceNotFoundException') {
+            return response(400, { error: 'Telegram not configured. Save settings first.' });
+        }
+        throw error;
+    }
+
+    if (!botToken || !chatId) {
+        return response(400, { error: 'Telegram credentials incomplete' });
+    }
+
+    // Send test message
+    const message = `✅ Business Manager Test\n\nTelegram notifications are working!\n\nTime: ${new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}`;
+
+    const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+
+    const telegramResponse = await fetch(telegramUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: chatId,
+            text: message,
+            parse_mode: 'HTML'
+        })
+    });
+
+    const telegramResult = await telegramResponse.json();
+
+    if (!telegramResult.ok) {
+        return response(400, {
+            error: 'Telegram API error',
+            details: telegramResult.description
+        });
+    }
+
+    return response(200, {
+        success: true,
+        message: 'Test message sent successfully'
+    });
 }
 
 // =====================================================

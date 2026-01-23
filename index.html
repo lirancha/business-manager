@@ -2160,15 +2160,12 @@
         // =====================================================
 
         let reminders = [];
-        let reminderCheckInterval = null;
-        let shownReminders = new Set(); // Track reminders shown today
 
         // Initialize reminders
         async function initReminders() {
             await loadReminders();
             updateNotificationButton();
             loadTelegramSettings();
-            startReminderCheck();
         }
 
         // Load reminders from API
@@ -2327,8 +2324,6 @@
                         body: 'Notifications enabled! You will receive reminders.',
                         icon: '🔔'
                     });
-                    // Start reminder checking now
-                    startReminderCheck();
                 } else if (permission === 'denied') {
                     alert('Notifications were blocked. Please enable them in your browser settings.');
                 } else {
@@ -2359,82 +2354,9 @@
             }
         }
 
-        // Start checking reminders every minute
-        function startReminderCheck() {
-            if (reminderCheckInterval) clearInterval(reminderCheckInterval);
-
-            // Reset shown reminders at midnight
-            const now = new Date();
-            const midnight = new Date(now);
-            midnight.setHours(24, 0, 0, 0);
-            const msUntilMidnight = midnight - now;
-            setTimeout(() => {
-                shownReminders.clear();
-            }, msUntilMidnight);
-
-            // Check immediately
-            checkReminders();
-
-            // Check every minute
-            reminderCheckInterval = setInterval(checkReminders, 60000);
-        }
-
-        // Check if any reminders should trigger
-        function checkReminders() {
-            if (Notification.permission !== 'granted') {
-                console.log('[Reminders] Notifications not granted');
-                return;
-            }
-
-            if (reminders.length === 0) {
-                console.log('[Reminders] No reminders to check');
-                return;
-            }
-
-            const now = new Date();
-            const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const currentDay = dayNames[now.getDay()];
-            // Use LOCAL date, not UTC
-            const currentDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-
-            console.log(`[Reminders] Checking at ${currentTime} on ${currentDay} (${currentDate})`);
-
-            reminders.forEach(reminder => {
-                if (!reminder.enabled) return;
-
-                const reminderKey = `${reminder.id}-${currentDate}`;
-                if (shownReminders.has(reminderKey)) return;
-
-                console.log(`[Reminders] Checking "${reminder.title}": time=${reminder.time} vs ${currentTime}`);
-
-                if (reminder.time !== currentTime) return;
-
-                let shouldTrigger = false;
-
-                if (reminder.type === 'recurring') {
-                    console.log(`[Reminders] Recurring - days=${(reminder.days||[]).join(',')} vs ${currentDay}`);
-                    if (reminder.days && reminder.days.includes(currentDay)) {
-                        shouldTrigger = true;
-                    }
-                } else {
-                    console.log(`[Reminders] One-time - date=${reminder.date} vs ${currentDate}`);
-                    if (reminder.date === currentDate) {
-                        shouldTrigger = true;
-                    }
-                }
-
-                if (shouldTrigger) {
-                    console.log(`[Reminders] TRIGGERING: ${reminder.title}`);
-                    showNotification(reminder);
-                    shownReminders.add(reminderKey);
-                }
-            });
-        }
-
-        // Show notification
+        // Show notification (browser notification only - Telegram is handled by server)
         function showNotification(reminder) {
-            // Try browser notification (works on desktop)
+            // Browser notification (works on desktop)
             if ('Notification' in window && Notification.permission === 'granted') {
                 new Notification('Zucca Café - Reminder', {
                     body: reminder.title,
@@ -2444,10 +2366,7 @@
                 });
             }
 
-            // Also send via Telegram if configured
-            sendTelegramMessage(`🔔 Reminder: ${reminder.title}`);
-
-            // Also play a sound if possible
+            // Play a sound if possible
             try {
                 const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleAYAgP/k6M6XPg==');
                 audio.volume = 0.5;
@@ -2477,36 +2396,36 @@
         }
 
         // =====================================================
-        // TELEGRAM INTEGRATION
+        // TELEGRAM INTEGRATION (Server-side via API)
         // =====================================================
 
-        let telegramBotToken = localStorage.getItem('telegramBotToken') || '';
-        let telegramChatId = localStorage.getItem('telegramChatId') || '';
+        let telegramConfigured = false;
 
-        // Load Telegram settings on page load
-        function loadTelegramSettings() {
-            telegramBotToken = localStorage.getItem('telegramBotToken') || '';
-            telegramChatId = localStorage.getItem('telegramChatId') || '';
-
-            const tokenInput = document.getElementById('telegram-bot-token');
-            const chatIdInput = document.getElementById('telegram-chat-id');
+        // Load Telegram settings from API
+        async function loadTelegramSettings() {
             const statusEl = document.getElementById('telegram-status');
             const collapsedEl = document.getElementById('telegram-collapsed');
             const expandedEl = document.getElementById('telegram-expanded');
 
-            if (tokenInput) tokenInput.value = telegramBotToken;
-            if (chatIdInput) chatIdInput.value = telegramChatId;
+            try {
+                const settings = await api.getTelegramSettings();
+                telegramConfigured = settings.configured;
 
-            // If configured, show collapsed state
-            if (telegramBotToken && telegramChatId) {
-                if (collapsedEl) collapsedEl.classList.remove('hidden');
-                if (expandedEl) expandedEl.classList.add('hidden');
-                if (statusEl) {
-                    statusEl.textContent = 'Configured';
-                    statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
+                // If configured, show collapsed state
+                if (telegramConfigured) {
+                    if (collapsedEl) collapsedEl.classList.remove('hidden');
+                    if (expandedEl) expandedEl.classList.add('hidden');
+                    if (statusEl) {
+                        statusEl.textContent = 'Configured';
+                        statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
+                    }
+                } else {
+                    // Not configured, show expanded form
+                    if (collapsedEl) collapsedEl.classList.add('hidden');
+                    if (expandedEl) expandedEl.classList.remove('hidden');
                 }
-            } else {
-                // Not configured, show expanded form
+            } catch (error) {
+                console.error('[Telegram] Failed to load settings:', error);
                 if (collapsedEl) collapsedEl.classList.add('hidden');
                 if (expandedEl) expandedEl.classList.remove('hidden');
             }
@@ -2520,84 +2439,60 @@
 
         // Collapse Telegram settings (show connected status)
         function collapseTelegramSettings() {
-            if (telegramBotToken && telegramChatId) {
+            if (telegramConfigured) {
                 document.getElementById('telegram-collapsed').classList.remove('hidden');
                 document.getElementById('telegram-expanded').classList.add('hidden');
             }
         }
 
-        // Save Telegram settings
-        function saveTelegramSettings() {
+        // Save Telegram settings to API
+        async function saveTelegramSettings() {
             const tokenInput = document.getElementById('telegram-bot-token');
             const chatIdInput = document.getElementById('telegram-chat-id');
 
-            telegramBotToken = tokenInput.value.trim();
-            telegramChatId = chatIdInput.value.trim();
+            const botToken = tokenInput.value.trim();
+            const chatId = chatIdInput.value.trim();
 
-            if (!telegramBotToken || !telegramChatId) {
+            if (!botToken || !chatId) {
                 alert('Please enter both Bot Token and Chat ID');
                 return;
             }
 
-            localStorage.setItem('telegramBotToken', telegramBotToken);
-            localStorage.setItem('telegramChatId', telegramChatId);
-
-            const statusEl = document.getElementById('telegram-status');
-            statusEl.textContent = 'Configured';
-            statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
-
-            // Collapse settings after saving
-            collapseTelegramSettings();
-
-            alert('Telegram settings saved!');
-        }
-
-        // Send message via Telegram
-        async function sendTelegramMessage(text) {
-            if (!telegramBotToken || !telegramChatId) {
-                console.log('[Telegram] Not configured, skipping');
-                return false;
-            }
-
             try {
-                const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: telegramChatId,
-                        text: text,
-                        parse_mode: 'HTML'
-                    })
-                });
+                await api.saveTelegramSettings(botToken, chatId);
+                telegramConfigured = true;
 
-                const data = await response.json();
+                const statusEl = document.getElementById('telegram-status');
+                statusEl.textContent = 'Configured';
+                statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
 
-                if (data.ok) {
-                    console.log('[Telegram] Message sent successfully');
-                    return true;
-                } else {
-                    console.error('[Telegram] Error:', data.description);
-                    return false;
-                }
+                // Clear the input fields for security
+                tokenInput.value = '';
+                chatIdInput.value = '';
+
+                // Collapse settings after saving
+                collapseTelegramSettings();
+
+                alert('Telegram settings saved! Reminders will be sent even when browser is closed.');
             } catch (error) {
-                console.error('[Telegram] Failed to send:', error);
-                return false;
+                console.error('[Telegram] Failed to save settings:', error);
+                alert('Failed to save settings: ' + error.message);
             }
         }
 
-        // Test Telegram connection
+        // Test Telegram connection via API
         async function testTelegram() {
-            if (!telegramBotToken || !telegramChatId) {
-                alert('Please enter Bot Token and Chat ID first, then click Save Settings');
+            if (!telegramConfigured) {
+                alert('Please save Telegram settings first');
                 return;
             }
 
-            const success = await sendTelegramMessage('✅ Test from Zucca Café!\n\nIf you see this message, Telegram notifications are working!');
-
-            if (success) {
+            try {
+                await api.testTelegram();
                 alert('Success! Check your Telegram - you should have received a test message.');
-            } else {
-                alert('Failed to send message. Please check:\n1. Bot Token is correct\n2. Chat ID is correct\n3. You have started a chat with the bot');
+            } catch (error) {
+                console.error('[Telegram] Test failed:', error);
+                alert('Failed to send test message: ' + error.message);
             }
         }
 
@@ -2645,14 +2540,11 @@ STEP 4: Enter in App
         initTouchDrag();
         initTaskListTouchDrag();
 
-        // ALWAYS load reminders on page load (so they're ready when tab opens)
+        // Load reminders on page load
         loadReminders().then(() => {
             console.log('[Reminders] Loaded on page start:', reminders.length, 'reminders');
-            // Start checking if notifications are enabled
-            if ('Notification' in window && Notification.permission === 'granted') {
-                console.log('[Reminders] Starting reminder checks...');
-                startReminderCheck();
-            }
+            // Note: Reminder notifications are now handled server-side via AWS Lambda
+            // Browser notifications still work when the app is open
         });
     </script>
 </body>

@@ -303,6 +303,31 @@ class BusinessManagerAPI {
     }
 
     // =====================================================
+    // TELEGRAM SETTINGS
+    // =====================================================
+
+    /**
+     * Get Telegram settings (checks if configured)
+     */
+    async getTelegramSettings() {
+        return this._get('/settings/telegram');
+    }
+
+    /**
+     * Save Telegram settings
+     */
+    async saveTelegramSettings(botToken, chatId) {
+        return this._put('/settings/telegram', { botToken, chatId });
+    }
+
+    /**
+     * Send a test Telegram message
+     */
+    async testTelegram() {
+        return this._post('/telegram/test', {});
+    }
+
+    // =====================================================
     // POLLING MANAGEMENT
     // =====================================================
 
