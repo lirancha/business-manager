@@ -8,9 +8,8 @@
     <meta http-equiv="Expires" content="0">
     <title>Zucca Café - Staff</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- AWS API Client (replaces Firebase) -->
+    <script src="api-client.js"></script>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -267,19 +266,15 @@
 </div><!-- end app-wrapper -->
 
     <script>
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
-            authDomain: "zucca-mang.firebaseapp.com",
-            projectId: "zucca-mang",
-            storageBucket: "zucca-mang.firebasestorage.app",
-            messagingSenderId: "423632065920",
-            appId: "1:423632065920:web:43c340defd3fe33442dd65"
-        };
+        // AWS API Configuration
+        // UPDATE THIS URL after deploying your Lambda function
+        const API_BASE_URL = 'https://98mctlbso0.execute-api.eu-central-1.amazonaws.com/prod';
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // Initialize API Client (replaces Firebase)
+        const api = new BusinessManagerAPI({
+            baseUrl: API_BASE_URL,
+            pollingInterval: 5000 // 5 second polling for real-time sync
+        });
 
         // Location Configuration
         const locations = [
@@ -295,7 +290,7 @@
             taskLists: []
         };
 
-        // UI State (not saved to Firebase)
+        // UI State (not saved to backend)
         let expandedCategories = [];
         let expandedTaskLists = [];
 
@@ -333,11 +328,10 @@
             });
         }
 
-        // Load from Firestore and listen for real-time updates
+        // Load from API and listen for real-time updates via polling
         function loadState() {
-            unsubscribe = db.collection('locations').doc(currentLocation).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
+            unsubscribe = api.subscribeLocation(currentLocation, (data) => {
+                if (data) {
                     state.categories = data.categories || [];
                     state.taskLists = data.taskLists || [];
                 } else {
@@ -346,13 +340,10 @@
                     state.taskLists = [];
                 }
                 renderAll();
-            }, (error) => {
-                console.error("Error loading data:", error);
-                renderAll();
             });
         }
 
-        // Save to Firestore with protection against data loss
+        // Save to API with protection against data loss
         async function saveState() {
             // SAFETY: Never save if both arrays are empty - prevents accidental data wipe
             if (state.categories.length === 0 && state.taskLists.length === 0) {
@@ -361,21 +352,8 @@
             }
 
             try {
-                // Create backup before saving
-                const currentDoc = await db.collection('locations').doc(currentLocation).get();
-                if (currentDoc.exists) {
-                    const existingData = currentDoc.data();
-                    if (existingData.categories?.length > 0 || existingData.taskLists?.length > 0) {
-                        await db.collection('backups').add({
-                            ...existingData,
-                            location: currentLocation,
-                            backupTime: new Date().toISOString()
-                        });
-                    }
-                }
-
-                // Now save the new data
-                await db.collection('locations').doc(currentLocation).set({
+                // Save to API (backup is handled automatically by api client)
+                await api.saveLocation(currentLocation, {
                     categories: state.categories,
                     taskLists: state.taskLists
                 });
@@ -901,30 +879,32 @@
             });
         }
 
-        // Load shift hours from Firebase config
+        // Load shift hours from API config
         async function scheduleLoadShiftHours() {
             try {
-                const doc = await db.collection('employee-schedules').doc('config').get();
-                if (doc.exists && doc.data().shiftHours) {
-                    scheduleShiftHours = doc.data().shiftHours;
+                const data = await api.getScheduleConfig();
+                if (data && data.shiftHours) {
+                    scheduleShiftHours = data.shiftHours;
                 }
             } catch (error) {
                 console.error('Error loading shift hours:', error);
             }
         }
 
-        // Load employees from Firebase
+        // Load employees from API
         async function scheduleLoadEmployees() {
             try {
-                const doc = await db.collection('employee-schedules').doc('config').get();
-                if (doc.exists && doc.data().employees) {
-                    scheduleEmployees = doc.data().employees;
+                const data = await api.getScheduleConfig();
+                if (data && data.employees) {
+                    scheduleEmployees = data.employees;
                 } else {
                     scheduleEmployees = [];
                 }
                 scheduleRenderEmployeeDropdown();
             } catch (error) {
                 console.error('Error loading employees:', error);
+                scheduleEmployees = [];
+                scheduleRenderEmployeeDropdown();
             }
         }
 
@@ -952,10 +932,10 @@
 
             try {
                 const weekId = scheduleGetWeekId();
-                const doc = await db.collection('employee-schedules').doc(weekId).get();
+                const data = await api.getScheduleWeek(weekId);
 
-                if (doc.exists && doc.data().availability && doc.data().availability[scheduleSelectedEmployeeId]) {
-                    const loadedAvail = doc.data().availability[scheduleSelectedEmployeeId];
+                if (data && data.availability && data.availability[scheduleSelectedEmployeeId]) {
+                    const loadedAvail = data.availability[scheduleSelectedEmployeeId];
                     scheduleAvailability = {};
                     scheduleDays.forEach(day => {
                         scheduleAvailability[day] = {};
@@ -975,7 +955,7 @@
                 }
 
                 scheduleRenderAvailabilityGrid();
-                scheduleRenderMyShifts(doc.exists ? doc.data() : null);
+                scheduleRenderMyShifts(data);
             } catch (error) {
                 console.error('Error loading availability:', error);
                 scheduleInitAvailability();
@@ -1160,19 +1140,19 @@
 
             try {
                 const weekId = scheduleGetWeekId();
-                const docRef = db.collection('employee-schedules').doc(weekId);
 
-                const doc = await docRef.get();
-                const existingData = doc.exists ? doc.data() : {
+                // Get existing data first
+                const existingData = await api.getScheduleWeek(weekId);
+                const dataToSave = existingData || {
                     weekStart: weekId,
                     availability: {},
                     finalSchedule: null
                 };
 
-                existingData.availability = existingData.availability || {};
-                existingData.availability[scheduleSelectedEmployeeId] = scheduleAvailability;
+                dataToSave.availability = dataToSave.availability || {};
+                dataToSave.availability[scheduleSelectedEmployeeId] = scheduleAvailability;
 
-                await docRef.set(existingData);
+                await api.saveScheduleWeek(weekId, dataToSave);
 
                 status.textContent = 'Availability saved successfully!';
                 status.className = 'mt-4 p-4 rounded-xl text-center font-medium bg-green-100 text-green-700';

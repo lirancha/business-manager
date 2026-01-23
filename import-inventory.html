@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Import Inventory - Isgav</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- AWS API Client (replaces Firebase) -->
+    <script src="api-client.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full text-center">
@@ -19,17 +19,9 @@
     </div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
-            authDomain: "zucca-mang.firebaseapp.com",
-            projectId: "zucca-mang",
-            storageBucket: "zucca-mang.firebasestorage.app",
-            messagingSenderId: "423632065920",
-            appId: "1:423632065920:web:43c340defd3fe33442dd65"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // AWS API Configuration
+        const API_BASE_URL = 'https://98mctlbso0.execute-api.eu-central-1.amazonaws.com/prod';
+        const api = new BusinessManagerAPI({ baseUrl: API_BASE_URL });
 
         // New categories to ADD (not replace!)
         const newCategories = [
@@ -338,15 +330,12 @@
 
             btn.disabled = true;
             btn.textContent = 'Importing...';
-            status.textContent = 'Connecting to Firebase...';
+            status.textContent = 'Connecting to API...';
 
             try {
-                const docRef = db.collection('locations').doc('isgav');
-
                 // STEP 1: Get existing data first (NEVER overwrite!)
                 status.textContent = 'Fetching existing data...';
-                const doc = await docRef.get();
-                const existingData = doc.exists ? doc.data() : { categories: [], taskLists: [] };
+                const existingData = await api.getLocation('isgav');
 
                 // Show what exists
                 const existingCount = existingData.categories ? existingData.categories.length : 0;
@@ -358,9 +347,9 @@
                 const mergedCategories = [...(existingData.categories || []), ...newCategories];
 
                 // STEP 3: Save with ALL existing data preserved
-                await docRef.set({
-                    ...existingData,              // Keep everything that exists
-                    categories: mergedCategories  // Only update categories array
+                await api.saveLocation('isgav', {
+                    categories: mergedCategories,
+                    taskLists: existingData.taskLists || []
                 });
 
                 status.textContent = 'Import successful!';

@@ -4,30 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Business Manager is a restaurant management app for Zucca Café with multi-location support (Isgav, Frankfurt). It's a vanilla JavaScript SPA with Firebase Firestore backend. The UI is in Hebrew with full RTL support.
+Business Manager is a restaurant management app for Zucca Café with multi-location support (Isgav, Frankfurt). It's a vanilla JavaScript SPA with AWS backend (API Gateway + Lambda + DynamoDB). The UI is in Hebrew with full RTL support.
 
 ## Architecture
 
 ```
-┌─────────────────┐         ┌─────────────────┐
-│  HTML/JS files  │  ──────►│    Firebase     │
-│  (in browser)   │         │  (cloud database)│
-└─────────────────┘         └─────────────────┘
-     Frontend                   Backend
-     (your code)              (Google's servers)
+┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
+│  HTML/JS files  │  ──────►│  API Gateway    │  ──────►│    DynamoDB     │
+│  (in browser)   │         │  + Lambda       │         │    (storage)    │
+└─────────────────┘         └─────────────────┘         └─────────────────┘
+     Frontend                   Backend                   Database
+     (GitHub Pages)           (AWS serverless)           (AWS managed)
 ```
 
-**No build process** - Direct HTML/CSS/JS files served statically. No server-side code. Firebase handles data storage, real-time sync, and security. All logic runs in the browser.
+**No build process** - Direct HTML/CSS/JS files served statically from GitHub Pages. Backend is AWS Lambda + API Gateway. All logic runs in the browser.
 
 **Tech stack:**
 - Vanilla JavaScript (ES6+) with inline `<script>` tags
 - Tailwind CSS v3 via CDN
-- Firebase Firestore v10.7.1 (real-time listeners)
+- AWS API Gateway + Lambda (`lambda/index.js`)
+- AWS DynamoDB (4 tables: locations, schedules, reminders, backups)
+- Polling-based sync via `api-client.js` (5-second interval)
 - Browser Notification API + Telegram Bot API for reminders
 - No authentication (public access)
 
-**Firebase config** is in each HTML file around lines 22-29.
-**Firebase Console:** https://console.firebase.google.com/project/zucca-mang
+**API config** is in each HTML file - look for `API_BASE_URL` near the top of the `<script>` tag.
 
 ## Files & Features
 
@@ -50,41 +51,39 @@ Business Manager is a restaurant management app for Zucca Café with multi-locat
 - Tasks: View tasks, mark complete, share progress
 - Schedule: Submit availability (full/partial shifts), view assigned shifts
 
-## Firebase Database Structure
+## DynamoDB Database Structure
 
 ```
-locations/
-  ├── isgav
-  │   ├── categories: [{id, name, products: [{id, name, quantity, unit}]}]
-  │   └── taskLists: [{id, name, color, tasks: [{id, text, note, done}]}]
-  └── frankfurt (same structure)
+business-manager-locations/
+  ├── id: "isgav" or "frankfurt"
+  ├── categories: [{id, name, products: [{id, name, quantity, unit}]}]
+  ├── taskLists: [{id, name, color, tasks: [{id, text, note, done}]}]
+  └── version: number (for change detection)
 
-employee-schedules/
-  ├── config
-  │   ├── employees: [{id, name, phone}]
-  │   └── shiftHours: {morning: {start, end}, afternoon: {...}, evening: {...}}
-  └── {weekId} (e.g., "2024-01-21")
-      ├── availability: {empId: {day: {shift: {available, customHours}}}}
-      └── finalSchedule: {day: {shift: {location: [empIds]}}}
+business-manager-schedules/
+  ├── id: "config" → { employees: [...], shiftHours: {...} }
+  └── id: "week-{weekId}" → { availability: {...}, finalSchedule: {...} }
 
-reminders/
-  └── {reminderId}: {title, time, type, enabled, days/date}
+business-manager-reminders/
+  └── id: "{reminderId}" → { title, time, type, enabled, days, date }
 
-backups/
-  └── {backupId}: {categories, taskLists, location, backupTime}
+business-manager-backups/
+  └── id: "{backupId}" → { categories, taskLists, location, backupTime }
 ```
 
 ## Data Flow
 
 ```
-Manager makes change → saveState() → Firebase → onSnapshot → All devices update
+Manager makes change → saveState() → API call → Lambda → DynamoDB
+                                                   ↓
+Other devices poll every 5s ← ────────────────────┘
 ```
 
-Real-time sync: Both manager and employee views listen to the same Firebase documents. Changes appear instantly on all connected devices.
+Near real-time sync: Both manager and employee views poll the API every 5 seconds. Changes appear on all connected devices within a few seconds.
 
 ## State Management
 
-In-memory state synced with Firebase:
+In-memory state synced with AWS API:
 ```javascript
 let state = { categories: [], taskLists: [] };
 let reminders = [];
@@ -93,6 +92,13 @@ let scheduleAvailability = {};
 ```
 
 Key functions: `saveState()`, `loadState()`, `switchLocation(locationId)`, `switchTab(tab)`
+
+**API Client:** The `api` object (instance of `BusinessManagerAPI` from `api-client.js`) provides:
+- `api.saveLocation(id, data)` - Save location data
+- `api.subscribeLocation(id, callback)` - Poll for location changes
+- `api.getScheduleConfig()` / `api.saveScheduleConfig(data)` - Employees & shift hours
+- `api.getScheduleWeek(weekId)` / `api.saveScheduleWeek(weekId, data)` - Weekly schedules
+- `api.listReminders()` / `api.createReminder(data)` / `api.updateReminder(id, data)` / `api.deleteReminder(id)` - Reminders
 
 ## Data Protection
 

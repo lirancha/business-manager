@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restore Data to Isgav</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- AWS API Client (replaces Firebase) -->
+    <script src="api-client.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full text-center">
@@ -19,18 +19,12 @@
     </div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
-            authDomain: "zucca-mang.firebaseapp.com",
-            projectId: "zucca-mang",
-            storageBucket: "zucca-mang.firebasestorage.app",
-            messagingSenderId: "423632065920",
-            appId: "1:423632065920:web:43c340defd3fe33442dd65"
-        };
+        // AWS API Configuration
+        const API_BASE_URL = 'https://98mctlbso0.execute-api.eu-central-1.amazonaws.com/prod';
+        const api = new BusinessManagerAPI({ baseUrl: API_BASE_URL });
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
+        // Note: This page is for restoring data from a backup.
+        // For migrating data from Firebase to AWS, use the migration scripts in the migration/ folder.
         async function migrateData() {
             const btn = document.getElementById('migrateBtn');
             const status = document.getElementById('status');
@@ -38,37 +32,31 @@
 
             btn.disabled = true;
             btn.textContent = 'Restoring...';
-            status.textContent = 'Connecting to Firebase...';
+            status.textContent = 'Connecting to API...';
 
             try {
-                // Step 1: Read from old location (business/data)
-                status.textContent = 'Reading data from business/data...';
-                const oldDoc = await db.collection('business').doc('data').get();
+                // Step 1: Get backups list
+                status.textContent = 'Fetching backups...';
+                const backups = await api.listBackups();
 
-                if (!oldDoc.exists) {
-                    throw new Error('No data found at business/data');
+                if (!backups || backups.length === 0) {
+                    throw new Error('No backups found');
                 }
 
-                const oldData = oldDoc.data();
-                const categories = oldData.categories || [];
-                const taskLists = oldData.taskLists || [];
-
-                status.textContent = `Found ${categories.length} categories and ${taskLists.length} task lists`;
-
-                // Step 2: Backup current isgav data (if any)
-                status.textContent = 'Creating backup...';
-                const currentIsgav = await db.collection('locations').doc('isgav').get();
-                if (currentIsgav.exists) {
-                    await db.collection('backups').doc('isgav_before_restore_' + Date.now()).set({
-                        ...currentIsgav.data(),
-                        backupTime: new Date().toISOString(),
-                        reason: 'Before data restore'
-                    });
+                // Get most recent backup for isgav
+                const isgavBackup = backups.find(b => b.location === 'isgav');
+                if (!isgavBackup) {
+                    throw new Error('No backup found for Isgav location');
                 }
 
-                // Step 3: Write to new location (locations/isgav)
-                status.textContent = 'Writing data to locations/isgav...';
-                await db.collection('locations').doc('isgav').set({
+                const categories = isgavBackup.categories || [];
+                const taskLists = isgavBackup.taskLists || [];
+
+                status.textContent = `Found backup with ${categories.length} categories and ${taskLists.length} task lists`;
+
+                // Step 2: Write to location
+                status.textContent = 'Restoring data to locations/isgav...';
+                await api.saveLocation('isgav', {
                     categories: categories,
                     taskLists: taskLists
                 });
@@ -81,7 +69,7 @@
                 result.innerHTML = `
                     <div class="text-green-600">
                         <p class="font-bold">Data restored successfully!</p>
-                        <p class="mt-2">Restored:</p>
+                        <p class="mt-2">Restored from backup (${isgavBackup.backupTime}):</p>
                         <ul class="mt-1 ml-4 list-disc">
                             <li>${categories.length} inventory categories</li>
                             <li>${taskLists.length} task lists</li>

@@ -8,9 +8,8 @@
     <meta http-equiv="Expires" content="0">
     <title>Zucca Café</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- AWS API Client (replaces Firebase) -->
+    <script src="api-client.js"></script>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -545,19 +544,15 @@
 </div><!-- end app-wrapper -->
 
     <script>
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBG8XLW_A0mah5B6E-1EPf9DvA96ym6Xgg",
-            authDomain: "zucca-mang.firebaseapp.com",
-            projectId: "zucca-mang",
-            storageBucket: "zucca-mang.firebasestorage.app",
-            messagingSenderId: "423632065920",
-            appId: "1:423632065920:web:43c340defd3fe33442dd65"
-        };
+        // AWS API Configuration
+        // UPDATE THIS URL after deploying your Lambda function
+        const API_BASE_URL = 'https://98mctlbso0.execute-api.eu-central-1.amazonaws.com/prod';
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // Initialize API Client (replaces Firebase)
+        const api = new BusinessManagerAPI({
+            baseUrl: API_BASE_URL,
+            pollingInterval: 5000 // 5 second polling for real-time sync
+        });
 
         // Location Configuration
         const locations = [
@@ -573,7 +568,7 @@
             taskLists: []
         };
 
-        // UI State (not saved to Firebase)
+        // UI State (not saved to backend)
         let expandedCategories = [];
         let expandedTaskLists = [];
 
@@ -599,29 +594,23 @@
             });
         }
 
-        // Load from Firestore and listen for real-time updates
+        // Load from API and listen for real-time updates via polling
         function loadState() {
-            unsubscribe = db.collection('locations').doc(currentLocation).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
+            unsubscribe = api.subscribeLocation(currentLocation, (data) => {
+                if (data) {
                     state.categories = data.categories || [];
                     state.taskLists = data.taskLists || [];
                 } else {
-                    // Document doesn't exist - show empty but DON'T save empty data
-                    // This prevents accidentally overwriting data due to race conditions
+                    // No data yet - show empty but DON'T save empty data
                     state.categories = [];
                     state.taskLists = [];
                     console.log("No data found for location: " + currentLocation);
                 }
                 renderAll();
-            }, (error) => {
-                console.error("Error loading data:", error);
-                // Fallback to empty state but DON'T save
-                renderAll();
             });
         }
 
-        // Save to Firestore with protection against data loss
+        // Save to API with protection against data loss
         async function saveState() {
             // SAFETY: Never save if both arrays are empty - prevents accidental data wipe
             if (state.categories.length === 0 && state.taskLists.length === 0) {
@@ -630,21 +619,8 @@
             }
 
             try {
-                // Create backup before saving (keeps last 5 backups)
-                const currentDoc = await db.collection('locations').doc(currentLocation).get();
-                if (currentDoc.exists) {
-                    const existingData = currentDoc.data();
-                    if (existingData.categories?.length > 0 || existingData.taskLists?.length > 0) {
-                        await db.collection('backups').add({
-                            ...existingData,
-                            location: currentLocation,
-                            backupTime: new Date().toISOString()
-                        });
-                    }
-                }
-
-                // Now save the new data
-                await db.collection('locations').doc(currentLocation).set({
+                // Save to API (backup is handled automatically by api client)
+                await api.saveLocation(currentLocation, {
                     categories: state.categories,
                     taskLists: state.taskLists
                 });
@@ -1709,20 +1685,17 @@
         // Load employees and shift hours
         async function scheduleLoadEmployees() {
             try {
-                const doc = await db.collection('employee-schedules').doc('config').get();
-                if (doc.exists) {
-                    const data = doc.data();
-                    scheduleEmployees = data.employees || [];
-                    if (data.shiftHours) {
-                        scheduleShiftHours = data.shiftHours;
-                        scheduleUpdateShiftHoursInputs();
-                    }
-                } else {
-                    scheduleEmployees = [];
+                const data = await api.getScheduleConfig();
+                scheduleEmployees = data.employees || [];
+                if (data.shiftHours) {
+                    scheduleShiftHours = data.shiftHours;
+                    scheduleUpdateShiftHoursInputs();
                 }
                 scheduleRenderEmployeeList();
             } catch (error) {
                 console.error('Error loading employees:', error);
+                scheduleEmployees = [];
+                scheduleRenderEmployeeList();
             }
         }
 
@@ -1737,7 +1710,7 @@
 
         async function scheduleSaveEmployees() {
             try {
-                await db.collection('employee-schedules').doc('config').set({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
+                await api.saveScheduleConfig({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
             } catch (error) {
                 console.error('Error saving employees:', error);
             }
@@ -1750,7 +1723,7 @@
                 evening: { start: document.getElementById('schedule-hours-evening-start').value, end: document.getElementById('schedule-hours-evening-end').value }
             };
             try {
-                await db.collection('employee-schedules').doc('config').set({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
+                await api.saveScheduleConfig({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
                 scheduleShowStatus('Shift hours saved!', 'success');
             } catch (error) {
                 scheduleShowStatus('Error saving shift hours', 'error');
@@ -1798,9 +1771,9 @@
         async function scheduleLoadWeekData() {
             try {
                 const weekId = scheduleGetWeekId();
-                const doc = await db.collection('employee-schedules').doc(weekId).get();
-                if (doc.exists) {
-                    scheduleWeekData = doc.data();
+                const data = await api.getScheduleWeek(weekId);
+                if (data && (data.availability || data.finalSchedule)) {
+                    scheduleWeekData = data;
                     if (scheduleWeekData.finalSchedule) {
                         scheduleFinalSchedule = scheduleWeekData.finalSchedule;
                     } else {
@@ -1980,11 +1953,9 @@
         async function scheduleSaveSchedule() {
             try {
                 const weekId = scheduleGetWeekId();
-                const docRef = db.collection('employee-schedules').doc(weekId);
-                const doc = await docRef.get();
-                const existingData = doc.exists ? doc.data() : { weekStart: weekId, availability: {} };
+                const existingData = scheduleWeekData || { weekStart: weekId, availability: {} };
 
-                await docRef.set({ ...existingData, finalSchedule: scheduleFinalSchedule });
+                await api.saveScheduleWeek(weekId, { ...existingData, finalSchedule: scheduleFinalSchedule });
                 scheduleShowStatus('Schedule saved!', 'success');
             } catch (error) {
                 scheduleShowStatus('Error saving schedule', 'error');
@@ -2200,17 +2171,15 @@
             startReminderCheck();
         }
 
-        // Load reminders from Firebase
+        // Load reminders from API
         async function loadReminders() {
             try {
-                const snapshot = await db.collection('reminders').orderBy('createdAt', 'desc').get();
-                reminders = [];
-                snapshot.forEach(doc => {
-                    reminders.push({ id: doc.id, ...doc.data() });
-                });
+                reminders = await api.listReminders();
                 renderReminders();
             } catch (error) {
                 console.error('Error loading reminders:', error);
+                reminders = [];
+                renderReminders();
             }
         }
 
@@ -2281,8 +2250,7 @@
                 title,
                 time,
                 type,
-                enabled: true,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                enabled: true
             };
 
             if (type === 'recurring') {
@@ -2302,7 +2270,7 @@
             }
 
             try {
-                await db.collection('reminders').add(reminder);
+                await api.createReminder(reminder);
                 document.getElementById('reminder-title').value = '';
                 document.querySelectorAll('.reminder-day').forEach(cb => cb.checked = false);
                 await loadReminders();
@@ -2318,9 +2286,7 @@
             if (!reminder) return;
 
             try {
-                await db.collection('reminders').doc(id).update({
-                    enabled: !reminder.enabled
-                });
+                await api.updateReminder(id, { enabled: !reminder.enabled });
                 await loadReminders();
             } catch (error) {
                 console.error('Error toggling reminder:', error);
@@ -2332,7 +2298,7 @@
             if (!confirm('Delete this reminder?')) return;
 
             try {
-                await db.collection('reminders').doc(id).delete();
+                await api.deleteReminder(id);
                 await loadReminders();
             } catch (error) {
                 console.error('Error deleting reminder:', error);

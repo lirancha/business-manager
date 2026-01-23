@@ -1,0 +1,17 @@
+{
+  "name": "business-manager-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda backend for Business Manager app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "package": "zip -r function.zip index.js node_modules package.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.478.0",
+    "@aws-sdk/lib-dynamodb": "^3.478.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
