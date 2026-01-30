@@ -2018,7 +2018,11 @@
 
             empsWithPhone.forEach((emp, index) => {
                 setTimeout(() => {
-                    const phone = emp.phone.replace(/[^0-9]/g, '');
+                    let phone = emp.phone.replace(/[^0-9]/g, '');
+                    // Convert Israeli numbers to international format
+                    if (phone.startsWith('0')) {
+                        phone = '972' + phone.substring(1);
+                    }
                     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
                 }, index * 500);
             });
@@ -2039,7 +2043,11 @@
                         (empShifts.length > 0 ? empShifts.join('\n') : 'No shifts assigned') +
                         `\n\nThanks!`
                     );
-                    const phone = emp.phone.replace(/[^0-9]/g, '');
+                    let phone = emp.phone.replace(/[^0-9]/g, '');
+                    // Convert Israeli numbers to international format
+                    if (phone.startsWith('0')) {
+                        phone = '972' + phone.substring(1);
+                    }
                     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
                 }, index * 500);
             });
