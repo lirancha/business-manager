@@ -718,6 +718,7 @@
                     console.log("No data found for location: " + currentLocation);
                 }
                 renderAll();
+                loadSuppliers();  // Sync suppliers on every poll for real-time updates
             });
         }
 
@@ -864,7 +865,7 @@
                 notesInput.value = '';
             } catch (error) {
                 console.error('Error creating supplier:', error);
-                alert('Error creating supplier');
+                alert('Error creating supplier: ' + (error.message || error));
             }
         }
 
