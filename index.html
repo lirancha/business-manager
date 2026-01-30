@@ -2041,7 +2041,7 @@
             empsWithPhone.forEach((emp, index) => {
                 setTimeout(() => {
                     const phone = emp.phone.replace(/[^0-9]/g, '');
-                    window.open(`whatsapp://send?phone=${phone}&text=${message}`, '_blank');
+                    window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${message}`, '_blank');
                 }, index * 500);
             });
         }
