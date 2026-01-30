@@ -1197,7 +1197,11 @@
         async function scheduleInit() {
             if (scheduleInitialized) return;
             scheduleInitialized = true;
-            scheduleCurrentWeekStart = scheduleGetWeekStart(new Date());
+            // Default to next week (more relevant for scheduling)
+            const today = new Date();
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+            scheduleCurrentWeekStart = scheduleGetWeekStart(nextWeek);
             scheduleInitAvailability();
             scheduleUpdateWeekDisplay();
             await scheduleLoadShiftHours();

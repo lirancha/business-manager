@@ -1628,6 +1628,18 @@
             evening: { start: '16:30', end: '20:30' }
         };
 
+        // Default availability for full-time employees (by name)
+        const scheduleDefaultAvailability = {
+            'לוטם אלישב': {
+                days: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+                shifts: ['morning', 'afternoon', 'evening']
+            },
+            'יהונתן שמאי': {
+                days: ['sunday', 'monday', 'thursday'],
+                shifts: ['morning']
+            }
+        };
+
         // Schedule State
         let scheduleCurrentWeekStart = null;
         let scheduleEmployees = [];
@@ -1789,6 +1801,47 @@
                 scheduleWeekData = { availability: {} };
                 scheduleInitFinalSchedule();
             }
+            // Apply default availability for full-time employees (display only, not saved)
+            scheduleApplyDefaults();
+        }
+
+        // Apply default availability for employees who haven't submitted yet
+        function scheduleApplyDefaults() {
+            console.log('scheduleApplyDefaults called');
+            console.log('scheduleEmployees:', scheduleEmployees);
+            console.log('scheduleWeekData:', scheduleWeekData);
+            if (!scheduleWeekData) return;
+            scheduleWeekData.availability = scheduleWeekData.availability || {};
+
+            scheduleEmployees.forEach(emp => {
+                console.log('Checking employee:', emp.name, '| Looking for match in:', Object.keys(scheduleDefaultAvailability));
+                // Check if employee has default availability configured (by name)
+                const defaultConfig = scheduleDefaultAvailability[emp.name];
+                if (!defaultConfig) {
+                    console.log('No default config for:', emp.name);
+                    return;
+                }
+
+                // Only apply if employee hasn't submitted availability for this week
+                if (scheduleWeekData.availability[emp.id]) {
+                    console.log('Already has availability:', emp.name);
+                    return;
+                }
+
+                console.log('Applying defaults for:', emp.name);
+                // Build default availability object
+                const empAvailability = {};
+                scheduleDays.forEach(day => {
+                    empAvailability[day] = {};
+                    scheduleShifts.forEach(shift => {
+                        const isAvailable = defaultConfig.days.includes(day) && defaultConfig.shifts.includes(shift);
+                        empAvailability[day][shift] = { available: isAvailable, customHours: null };
+                    });
+                });
+
+                // Apply defaults (display only)
+                scheduleWeekData.availability[emp.id] = empAvailability;
+            });
         }
 
         // Get employee availability info
@@ -2146,7 +2199,11 @@
         async function scheduleInit() {
             if (scheduleInitialized) return;
             scheduleInitialized = true;
-            scheduleCurrentWeekStart = scheduleGetWeekStart(new Date());
+            // Default to next week (more relevant for scheduling)
+            const today = new Date();
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+            scheduleCurrentWeekStart = scheduleGetWeekStart(nextWeek);
             scheduleUpdateWeekDisplay();
             await scheduleLoadEmployees();
             await scheduleLoadWeekData();
