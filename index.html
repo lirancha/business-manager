@@ -305,6 +305,12 @@
                         <span class="employee-chip chip-not-submitted">Not submitted</span>
                     </div>
                 </div>
+
+                <!-- Employee Notes Section -->
+                <div id="schedule-employee-notes" class="mt-4 bg-yellow-50 rounded-xl p-4 shadow hidden">
+                    <h3 class="font-bold text-gray-800 mb-2">📝 Employee Notes</h3>
+                    <div id="schedule-notes-list" class="space-y-2 text-sm"></div>
+                </div>
             </div>
 
             <!-- Schedule Sub-content: Builder -->
@@ -1901,6 +1907,38 @@
 
             html += `</tbody>`;
             table.innerHTML = html;
+
+            // Render employee notes section
+            scheduleRenderEmployeeNotes();
+        }
+
+        // Render employee notes section
+        function scheduleRenderEmployeeNotes() {
+            const notesContainer = document.getElementById('schedule-employee-notes');
+            const notesList = document.getElementById('schedule-notes-list');
+            const availability = scheduleWeekData?.availability || {};
+
+            // Collect employees with notes
+            const employeesWithNotes = [];
+            scheduleEmployees.forEach(emp => {
+                const empAvail = availability[emp.id];
+                if (empAvail && empAvail.note) {
+                    employeesWithNotes.push({ name: emp.name, note: empAvail.note });
+                }
+            });
+
+            if (employeesWithNotes.length === 0) {
+                notesContainer.classList.add('hidden');
+                return;
+            }
+
+            notesContainer.classList.remove('hidden');
+            notesList.innerHTML = employeesWithNotes.map(e => `
+                <div class="flex items-start gap-2 bg-white rounded-lg p-2">
+                    <span class="font-medium text-gray-800">${e.name}:</span>
+                    <span class="text-gray-600">"${e.note}"</span>
+                </div>
+            `).join('');
         }
 
         // Render schedule builder with clickable chips

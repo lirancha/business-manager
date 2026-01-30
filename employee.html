@@ -172,6 +172,13 @@
                 <!-- Days will be rendered here -->
             </div>
 
+            <!-- Note for Manager -->
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Note for manager (optional)</label>
+                <textarea id="schedule-note" rows="2" class="w-full p-2 border rounded-lg text-sm"
+                    placeholder="E.g., Sunday only at Isgav location..."></textarea>
+            </div>
+
             <!-- Submit Button -->
             <div class="mt-4">
                 <button onclick="scheduleSubmitAvailability()" id="schedule-submit-btn" disabled
@@ -950,8 +957,11 @@
                             }
                         });
                     });
+                    // Load existing note
+                    document.getElementById('schedule-note').value = loadedAvail.note || '';
                 } else {
                     scheduleInitAvailability();
+                    document.getElementById('schedule-note').value = '';
                 }
 
                 scheduleRenderAvailabilityGrid();
@@ -1150,7 +1160,14 @@
                 };
 
                 dataToSave.availability = dataToSave.availability || {};
-                dataToSave.availability[scheduleSelectedEmployeeId] = scheduleAvailability;
+
+                // Include the note in the availability data
+                const note = document.getElementById('schedule-note').value.trim();
+                const empAvailability = { ...scheduleAvailability };
+                if (note) {
+                    empAvailability.note = note;
+                }
+                dataToSave.availability[scheduleSelectedEmployeeId] = empAvailability;
 
                 await api.saveScheduleWeek(weekId, dataToSave);
 
