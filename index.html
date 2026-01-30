@@ -1795,18 +1795,10 @@
                                 const needsOrder = product.quantity > 0;
                                 const unit = product.unit || 'item';
                                 const unitLabel = unit === 'package' ? 'pkg' : 'item';
-                                const price = product.price || 0;
                                 return `
                                 <div class="product-row flex items-center justify-between py-2 gap-2" dir="rtl">
                                     <div class="flex items-center gap-2 flex-1 min-w-0">
                                         <span class="product-name ${needsOrder ? 'text-red-500 font-medium' : ''} truncate">${product.name}</span>
-                                        <div class="flex items-center gap-1">
-                                            <span class="text-xs text-gray-400">₪</span>
-                                            <input type="number" value="${price}" min="0" step="0.5"
-                                                   onchange="setProductPrice(${category.id}, ${product.id}, this.value)"
-                                                   class="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                                   placeholder="0">
-                                        </div>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button onclick="toggleProductUnit(${category.id}, ${product.id})"
