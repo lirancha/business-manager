@@ -116,6 +116,30 @@ class BusinessManagerAPI {
             return null;
         }
 
+        // SAFETY: Detect suspicious data reduction (potential race condition or corruption)
+        const cached = this.versionCache.get(`location-${locationId}`);
+        if (cached) {
+            const prevProductCount = cached.categories?.reduce((sum, c) => sum + (c.products?.length || 0), 0) || 0;
+            const newProductCount = data.categories?.reduce((sum, c) => sum + (c.products?.length || 0), 0) || 0;
+            const prevTaskCount = cached.taskLists?.reduce((sum, t) => sum + (t.tasks?.length || 0), 0) || 0;
+            const newTaskCount = data.taskLists?.reduce((sum, t) => sum + (t.tasks?.length || 0), 0) || 0;
+
+            // Block if we had significant data and now have almost nothing
+            // (more than 10 products/tasks before, less than 3 now = suspicious)
+            if ((prevProductCount > 10 && newProductCount < 3) ||
+                (prevTaskCount > 10 && newTaskCount < 3)) {
+                console.error('[API] BLOCKED suspicious data loss!', {
+                    location: locationId,
+                    previousProducts: prevProductCount,
+                    newProducts: newProductCount,
+                    previousTasks: prevTaskCount,
+                    newTasks: newTaskCount
+                });
+                console.warn('[API] If this is intentional, clear the browser cache and reload');
+                return null;
+            }
+        }
+
         // Create backup before saving
         const currentData = this.versionCache.get(`location-${locationId}`);
         if (currentData && (currentData.categories?.length > 0 || currentData.taskLists?.length > 0)) {
@@ -144,20 +168,39 @@ class BusinessManagerAPI {
      */
     subscribeLocation(locationId, callback) {
         const pollerId = `location-${locationId}`;
+        let isSubscribed = true; // Track subscription state to prevent race conditions
 
         // Initial load
         this.getLocation(locationId).then(data => {
+            // Guard: Don't fire callback if unsubscribed (location was switched)
+            if (!isSubscribed) {
+                console.log('[API] Ignoring initial load callback - subscription cancelled for', locationId);
+                return;
+            }
             this.versionCache.set(pollerId, data);
             callback(data);
         }).catch(err => {
             console.error('[API] Initial load failed:', err);
-            callback({ categories: [], taskLists: [], version: 0 });
+            if (isSubscribed) {
+                callback({ categories: [], taskLists: [], version: 0 });
+            }
         });
 
         // Set up polling
         const poll = async () => {
+            // Guard: Don't poll if unsubscribed or polling is paused
+            if (!isSubscribed || this._pollingPaused) {
+                return;
+            }
             try {
                 const data = await this.getLocation(locationId);
+
+                // Guard: Check again after async call - location may have switched
+                if (!isSubscribed) {
+                    console.log('[API] Ignoring poll callback - subscription cancelled for', locationId);
+                    return;
+                }
+
                 const cached = this.versionCache.get(pollerId);
 
                 // Only callback if version changed
@@ -175,8 +218,10 @@ class BusinessManagerAPI {
 
         // Return unsubscribe function
         return () => {
+            isSubscribed = false; // Mark as unsubscribed to cancel pending callbacks
             clearInterval(intervalId);
             this.activePollers.delete(pollerId);
+            console.log('[API] Unsubscribed from location:', locationId);
         };
     }
 
@@ -325,6 +370,70 @@ class BusinessManagerAPI {
      */
     async testTelegram() {
         return this._post('/telegram/test', {});
+    }
+
+    // =====================================================
+    // SUPPLIERS
+    // =====================================================
+
+    /**
+     * List all suppliers
+     * @param {string} location - Optional location filter
+     */
+    async listSuppliers(location = null) {
+        const params = new URLSearchParams();
+        if (location) params.append('location', location);
+        const query = params.toString();
+        return this._get(`/suppliers${query ? '?' + query : ''}`);
+    }
+
+    /**
+     * Create a supplier
+     * @param {Object} data - { name, phone, notes, location }
+     */
+    async createSupplier(data) {
+        return this._post('/suppliers', data);
+    }
+
+    /**
+     * Update a supplier
+     * @param {string} id - Supplier ID
+     * @param {Object} data - { name, phone, notes, location }
+     */
+    async updateSupplier(id, data) {
+        return this._put(`/suppliers/${id}`, data);
+    }
+
+    /**
+     * Delete a supplier
+     */
+    async deleteSupplier(id) {
+        return this._delete(`/suppliers/${id}`);
+    }
+
+    // =====================================================
+    // ORDERS
+    // =====================================================
+
+    /**
+     * Create an order record
+     * @param {Object} data - { supplierId, supplierName, categoryId, categoryName, items, orderText, location, sharedVia }
+     */
+    async createOrder(data) {
+        return this._post('/orders', data);
+    }
+
+    /**
+     * List orders with optional filters
+     * @param {Object} filters - { location, month: 'YYYY-MM', supplier: 'supplier-id' }
+     */
+    async listOrders(filters = {}) {
+        const params = new URLSearchParams();
+        if (filters.location) params.append('location', filters.location);
+        if (filters.month) params.append('month', filters.month);
+        if (filters.supplier) params.append('supplier', filters.supplier);
+        const query = params.toString();
+        return this._get(`/orders${query ? '?' + query : ''}`);
     }
 
     // =====================================================
