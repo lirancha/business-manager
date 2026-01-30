@@ -150,6 +150,39 @@
     <main class="pb-24 px-2">
         <!-- Inventory Tab -->
         <div id="inventory-tab" class="py-2">
+            <!-- Suppliers Section (Collapsible) -->
+            <div class="bg-white rounded-lg shadow mb-3">
+                <div class="bg-indigo-600 text-white px-3 py-2 flex justify-between items-center cursor-pointer rounded-t-lg" onclick="toggleSuppliersSection()">
+                    <div class="flex items-center gap-2">
+                        <span id="suppliers-toggle-icon" class="transition-transform">&gt;</span>
+                        <h3 class="font-bold text-sm">Suppliers</h3>
+                        <span id="suppliers-count" class="bg-indigo-500 text-white text-xs px-1.5 py-0.5 rounded-full">0</span>
+                    </div>
+                </div>
+                <div id="suppliers-section" class="hidden p-3">
+                    <!-- Add Supplier Form -->
+                    <div class="bg-gray-50 rounded-lg p-3 mb-3">
+                        <div class="space-y-2">
+                            <input type="text" id="new-supplier-name" placeholder="Supplier name..."
+                                   class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <div class="flex gap-2">
+                                <input type="tel" id="new-supplier-phone" placeholder="Phone (for WhatsApp)"
+                                       class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <button onclick="addSupplier()" class="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-600">
+                                    + Add
+                                </button>
+                            </div>
+                            <input type="text" id="new-supplier-notes" placeholder="Notes (optional)..."
+                                   class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    <!-- Suppliers List -->
+                    <div id="suppliers-list" class="space-y-2">
+                        <p class="text-gray-400 text-center py-2 text-sm">No suppliers yet</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Add Category -->
             <div class="bg-white rounded-lg shadow p-3 mb-3">
                 <div class="flex gap-2">
@@ -165,9 +198,15 @@
             <div id="categories-container"></div>
 
             <!-- Generate Order Button -->
-            <div class="mt-4">
+            <div class="mt-4 space-y-2">
                 <button onclick="generateOrder()" class="w-full bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 flex items-center justify-center gap-2">
                     Generate Order List
+                </button>
+                <button onclick="openOrderReports()" class="w-full bg-indigo-500 text-white py-3 rounded-lg font-medium hover:bg-indigo-600 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    View Order Reports
                 </button>
             </div>
         </div>
@@ -549,6 +588,61 @@
             </div>
         </div>
     </div>
+
+    <!-- Order Reports Modal -->
+    <div id="order-reports-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Order Reports</h2>
+                <button onclick="closeOrderReportsModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <!-- Month Navigation -->
+            <div class="p-3 border-b bg-gray-50">
+                <div class="flex justify-between items-center mb-2">
+                    <button onclick="reportsChangeMonth(-1)" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <span id="reports-month-label" class="font-bold text-gray-800"></span>
+                    <button onclick="reportsChangeMonth(1)" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Supplier Filter -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600">Supplier:</label>
+                    <select id="reports-supplier-filter" onchange="loadOrderReports()" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                        <option value="">All Suppliers</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Summary Section -->
+            <div id="order-reports-summary" class="p-3 border-b hidden">
+                <!-- Populated dynamically -->
+            </div>
+            <!-- Orders List -->
+            <div class="p-4 overflow-y-auto flex-1">
+                <div id="order-reports-list" class="space-y-3">
+                    <p class="text-gray-400 text-center py-4">No orders found</p>
+                </div>
+            </div>
+            <!-- Export Buttons -->
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="copyOrderReports()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Copy
+                </button>
+                <button onclick="printOrderReports()" class="flex-1 bg-indigo-500 text-white py-3 rounded-lg font-medium hover:bg-indigo-600">
+                    Print
+                </button>
+                <button onclick="shareOrderReportsWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600">
+                    Share
+                </button>
+            </div>
+        </div>
+    </div>
 </div><!-- end app-wrapper -->
 
     <script>
@@ -579,6 +673,14 @@
         // UI State (not saved to backend)
         let expandedCategories = [];
         let expandedTaskLists = [];
+        let suppliersSectionExpanded = false;
+
+        // Suppliers State
+        let suppliers = [];
+
+        // Order Reports State
+        let reportsCurrentMonth = new Date();
+        let currentOrderCategory = null; // Track which category is being ordered
 
         // Switch Location
         function switchLocation(locationId) {
@@ -589,6 +691,7 @@
             expandedTaskLists = [];
             updateLocationUI();
             loadState();
+            loadSuppliers();
         }
 
         function updateLocationUI() {
@@ -689,6 +792,145 @@
             }
         }
 
+        // =====================================================
+        // SUPPLIERS SYSTEM
+        // =====================================================
+
+        function toggleSuppliersSection() {
+            suppliersSectionExpanded = !suppliersSectionExpanded;
+            const section = document.getElementById('suppliers-section');
+            const icon = document.getElementById('suppliers-toggle-icon');
+            section.classList.toggle('hidden', !suppliersSectionExpanded);
+            icon.classList.toggle('rotate-90', suppliersSectionExpanded);
+        }
+
+        async function loadSuppliers() {
+            try {
+                suppliers = await api.listSuppliers(currentLocation);
+                renderSuppliers();
+            } catch (error) {
+                console.error('Error loading suppliers:', error);
+                suppliers = [];
+                renderSuppliers();
+            }
+        }
+
+        function renderSuppliers() {
+            const container = document.getElementById('suppliers-list');
+            const countEl = document.getElementById('suppliers-count');
+            countEl.textContent = suppliers.length;
+
+            if (suppliers.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-2 text-sm">No suppliers yet</p>';
+                return;
+            }
+
+            container.innerHTML = suppliers.map(sup => `
+                <div class="bg-gray-50 rounded-lg p-3 flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">${sup.name}</div>
+                        ${sup.phone ? `<div class="text-sm text-gray-500">${sup.phone}</div>` : ''}
+                        ${sup.notes ? `<div class="text-xs text-gray-400 mt-1">${sup.notes}</div>` : ''}
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editSupplier('${sup.id}')" class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
+                        <button onclick="deleteSupplier('${sup.id}')" class="text-red-500 hover:text-red-700 text-sm">Del</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addSupplier() {
+            const nameInput = document.getElementById('new-supplier-name');
+            const phoneInput = document.getElementById('new-supplier-phone');
+            const notesInput = document.getElementById('new-supplier-notes');
+            const name = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            const notes = notesInput.value.trim();
+
+            if (!name) return;
+
+            try {
+                const newSupplier = await api.createSupplier({
+                    name,
+                    phone: phone || null,
+                    notes: notes || null,
+                    location: currentLocation
+                });
+                suppliers.push(newSupplier);
+                renderSuppliers();
+                nameInput.value = '';
+                phoneInput.value = '';
+                notesInput.value = '';
+            } catch (error) {
+                console.error('Error creating supplier:', error);
+                alert('Error creating supplier');
+            }
+        }
+
+        async function editSupplier(supplierId) {
+            const supplier = suppliers.find(s => s.id === supplierId);
+            if (!supplier) return;
+
+            const name = prompt('Supplier name:', supplier.name);
+            if (name === null) return;
+            if (!name.trim()) {
+                alert('Name cannot be empty');
+                return;
+            }
+
+            const phone = prompt('Phone (for WhatsApp):', supplier.phone || '');
+            if (phone === null) return;
+
+            const notes = prompt('Notes:', supplier.notes || '');
+            if (notes === null) return;
+
+            try {
+                const updated = await api.updateSupplier(supplierId, {
+                    name: name.trim(),
+                    phone: phone.trim() || null,
+                    notes: notes.trim() || null
+                });
+                const index = suppliers.findIndex(s => s.id === supplierId);
+                if (index !== -1) {
+                    suppliers[index] = updated;
+                }
+                renderSuppliers();
+            } catch (error) {
+                console.error('Error updating supplier:', error);
+                alert('Error updating supplier');
+            }
+        }
+
+        async function deleteSupplier(supplierId) {
+            if (!confirm('Delete this supplier?')) return;
+
+            try {
+                await api.deleteSupplier(supplierId);
+                suppliers = suppliers.filter(s => s.id !== supplierId);
+                renderSuppliers();
+                // Also clear supplierId from any categories using this supplier
+                state.categories.forEach(cat => {
+                    if (cat.supplierId === supplierId) {
+                        cat.supplierId = null;
+                    }
+                });
+                saveState();
+                renderCategories();
+            } catch (error) {
+                console.error('Error deleting supplier:', error);
+                alert('Error deleting supplier');
+            }
+        }
+
+        function getSupplierById(supplierId) {
+            return suppliers.find(s => s.id === supplierId);
+        }
+
+        // =====================================================
+        // END SUPPLIERS SYSTEM
+        // =====================================================
+
         // Category Functions
         function toggleCategory(categoryId) {
             const index = expandedCategories.indexOf(categoryId);
@@ -722,6 +964,14 @@
             renderCategories();
         }
 
+        function setCategorySupplier(categoryId, supplierId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+            category.supplierId = supplierId || null;
+            saveState();
+            renderCategories();
+        }
+
         // Product Functions
         function addProduct(categoryId) {
             const input = document.getElementById(`product-input-${categoryId}`);
@@ -733,11 +983,19 @@
                 id: Date.now(),
                 name: name,
                 quantity: 0,
-                unit: 'item'
+                unit: 'item',
+                price: 0
             });
             input.value = '';
             saveState();
             renderCategories();
+        }
+
+        function setProductPrice(categoryId, productId, price) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            product.price = Math.max(0, parseFloat(price) || 0);
+            saveState();
         }
 
         function incrementQuantity(categoryId, productId, amount = 1) {
@@ -1276,11 +1534,39 @@
                 return;
             }
 
+            // Store current order context for tracking (with prices)
+            currentOrderCategory = {
+                id: category.id,
+                name: category.name,
+                supplierId: category.supplierId,
+                supplier: category.supplierId ? getSupplierById(category.supplierId) : null,
+                items: needOrder.map(p => ({
+                    name: p.name,
+                    quantity: p.quantity,
+                    unit: p.unit || 'item',
+                    price: p.price || 0,
+                    total: (p.quantity || 0) * (p.price || 0)
+                }))
+            };
+
+            // Calculate order total
+            const orderTotal = currentOrderCategory.items.reduce((sum, item) => sum + item.total, 0);
+
             let orderText = `ORDER LIST - ${category.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
             needOrder.forEach(item => {
                 const unitLabel = (item.unit || 'item') === 'package' ? 'pkg' : 'item';
-                orderText += `  - ${item.name} x${item.quantity} (${unitLabel})\n`;
+                const price = item.price || 0;
+                const itemTotal = item.quantity * price;
+                if (price > 0) {
+                    orderText += `  - ${item.name} x${item.quantity} (${unitLabel}) @ ₪${price} = ₪${itemTotal.toFixed(2)}\n`;
+                } else {
+                    orderText += `  - ${item.name} x${item.quantity} (${unitLabel})\n`;
+                }
             });
+
+            if (orderTotal > 0) {
+                orderText += `\n${'─'.repeat(20)}\nTotal: ₪${orderTotal.toFixed(2)}\n`;
+            }
 
             document.getElementById('order-text').textContent = orderText;
             document.getElementById('order-modal').classList.remove('hidden');
@@ -1288,6 +1574,7 @@
 
         function closeModal() {
             document.getElementById('order-modal').classList.add('hidden');
+            currentOrderCategory = null;
         }
 
         function copyOrder() {
@@ -1297,9 +1584,41 @@
             });
         }
 
-        function shareViaWhatsApp() {
-            const text = encodeURIComponent(document.getElementById('order-text').textContent);
-            window.open(`https://wa.me/?text=${text}`, '_blank');
+        async function shareViaWhatsApp() {
+            const orderText = document.getElementById('order-text').textContent;
+            const text = encodeURIComponent(orderText);
+
+            // Get supplier phone if category has one assigned
+            let supplierPhone = null;
+            if (currentOrderCategory?.supplier?.phone) {
+                // Convert to international format if needed
+                supplierPhone = currentOrderCategory.supplier.phone.replace(/^0/, '+972').replace(/[^+\d]/g, '');
+            }
+
+            // Save order to history
+            if (currentOrderCategory) {
+                try {
+                    await api.createOrder({
+                        supplierId: currentOrderCategory.supplierId,
+                        supplierName: currentOrderCategory.supplier?.name || null,
+                        categoryId: currentOrderCategory.id,
+                        categoryName: currentOrderCategory.name,
+                        items: currentOrderCategory.items,
+                        orderText: orderText,
+                        location: currentLocation,
+                        sharedVia: 'whatsapp'
+                    });
+                } catch (error) {
+                    console.error('Error saving order:', error);
+                }
+            }
+
+            // Open WhatsApp with pre-filled phone if available
+            if (supplierPhone) {
+                window.open(`https://wa.me/${supplierPhone}?text=${text}`, '_blank');
+            } else {
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+            }
         }
 
         function shareViaEmail() {
@@ -1426,6 +1745,10 @@
             container.innerHTML = state.categories.map(category => {
                 const isExpanded = expandedCategories.includes(category.id);
                 const itemsNeedingOrder = category.products.filter(p => p.quantity > 0).length;
+                const assignedSupplier = category.supplierId ? getSupplierById(category.supplierId) : null;
+                const supplierOptions = suppliers.map(s =>
+                    `<option value="${s.id}" ${category.supplierId === s.id ? 'selected' : ''}>${s.name}</option>`
+                ).join('');
                 return `
                 <div class="bg-white rounded-lg shadow mb-3" style="max-width: 100%; overflow: hidden;">
                     <div class="bg-gray-800 text-white px-2 py-2 flex justify-between items-center cursor-pointer" dir="rtl" onclick="toggleCategory(${category.id})">
@@ -1433,6 +1756,7 @@
                             <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
                             <h3 class="font-bold text-sm">${category.name}</h3>
                             ${itemsNeedingOrder > 0 ? `<span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">${itemsNeedingOrder}</span>` : ''}
+                            ${assignedSupplier ? `<span class="bg-indigo-500 text-white text-xs px-1.5 py-0.5 rounded-full">${assignedSupplier.name}</span>` : ''}
                         </div>
                         <div class="flex items-center gap-2" onclick="event.stopPropagation()">
                             <button onclick="resetCategory(${category.id})" class="text-green-300 hover:text-green-100 text-xs">
@@ -1447,6 +1771,15 @@
                         </div>
                     </div>
                     <div class="${isExpanded ? '' : 'hidden'} p-2" style="max-width: 100%; overflow: hidden;">
+                        <!-- Supplier Assignment -->
+                        <div class="flex items-center gap-2 mb-2 pb-2 border-b">
+                            <label class="text-xs text-gray-500">Supplier:</label>
+                            <select onchange="setCategorySupplier(${category.id}, this.value)"
+                                    class="flex-1 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <option value="">-- None --</option>
+                                ${supplierOptions}
+                            </select>
+                        </div>
                         <div class="flex gap-1 mb-2" style="max-width: 100%;">
                             <input type="text" id="product-input-${category.id}" placeholder="Add product..."
                                    class="flex-1 min-w-0 px-2 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1461,9 +1794,19 @@
                                 const needsOrder = product.quantity > 0;
                                 const unit = product.unit || 'item';
                                 const unitLabel = unit === 'package' ? 'pkg' : 'item';
+                                const price = product.price || 0;
                                 return `
                                 <div class="product-row flex items-center justify-between py-2 gap-2" dir="rtl">
-                                    <span class="product-name ${needsOrder ? 'text-red-500 font-medium' : ''}">${product.name}</span>
+                                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                                        <span class="product-name ${needsOrder ? 'text-red-500 font-medium' : ''} truncate">${product.name}</span>
+                                        <div class="flex items-center gap-1">
+                                            <span class="text-xs text-gray-400">₪</span>
+                                            <input type="number" value="${price}" min="0" step="0.5"
+                                                   onchange="setProductPrice(${category.id}, ${product.id}, this.value)"
+                                                   class="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                   placeholder="0">
+                                        </div>
+                                    </div>
                                     <div class="flex items-center gap-2">
                                         <button onclick="toggleProductUnit(${category.id}, ${product.id})"
                                                 class="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200">
@@ -2595,9 +2938,364 @@ STEP 4: Enter in App
         // END REMINDERS SYSTEM
         // =====================================================
 
+        // =====================================================
+        // ORDER REPORTS SYSTEM
+        // =====================================================
+
+        let currentOrderReports = [];
+
+        function openOrderReports() {
+            reportsCurrentMonth = new Date();
+            populateReportsSupplierFilter();
+            loadOrderReports();
+            document.getElementById('order-reports-modal').classList.remove('hidden');
+        }
+
+        function closeOrderReportsModal() {
+            document.getElementById('order-reports-modal').classList.add('hidden');
+        }
+
+        function populateReportsSupplierFilter() {
+            const select = document.getElementById('reports-supplier-filter');
+            select.innerHTML = '<option value="">All Suppliers</option>' +
+                suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        function reportsChangeMonth(delta) {
+            reportsCurrentMonth.setMonth(reportsCurrentMonth.getMonth() + delta);
+            loadOrderReports();
+        }
+
+        function getMonthLabel(date) {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+            return `${months[date.getMonth()]} ${date.getFullYear()}`;
+        }
+
+        function getMonthId(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}`;
+        }
+
+        async function loadOrderReports() {
+            const monthLabel = document.getElementById('reports-month-label');
+            const listContainer = document.getElementById('order-reports-list');
+            const summaryContainer = document.getElementById('order-reports-summary');
+
+            monthLabel.textContent = getMonthLabel(reportsCurrentMonth);
+
+            const supplierFilter = document.getElementById('reports-supplier-filter').value;
+            const monthId = getMonthId(reportsCurrentMonth);
+
+            try {
+                currentOrderReports = await api.listOrders({
+                    location: currentLocation,
+                    month: monthId,
+                    supplier: supplierFilter || undefined
+                });
+
+                if (currentOrderReports.length === 0) {
+                    summaryContainer.classList.add('hidden');
+                    listContainer.innerHTML = '<p class="text-gray-400 text-center py-4">No orders found for this period</p>';
+                    return;
+                }
+
+                // Calculate summary statistics
+                const stats = calculateOrderStats(currentOrderReports);
+                renderOrderSummary(summaryContainer, stats);
+
+                // Group orders by supplier
+                const grouped = {};
+                currentOrderReports.forEach(order => {
+                    const key = order.supplierName || 'No Supplier';
+                    if (!grouped[key]) {
+                        grouped[key] = [];
+                    }
+                    grouped[key].push(order);
+                });
+
+                // Render grouped orders with totals
+                let html = '';
+                Object.keys(grouped).sort().forEach(supplierName => {
+                    const orders = grouped[supplierName];
+                    const supplierTotal = orders.reduce((sum, order) => {
+                        return sum + (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                    }, 0);
+                    html += `
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-bold text-indigo-600">${supplierName}</div>
+                                <div class="text-sm">
+                                    <span class="text-gray-500">${orders.length} orders</span>
+                                    ${supplierTotal > 0 ? `<span class="text-indigo-600 font-medium ml-2">₪${supplierTotal.toFixed(2)}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                ${orders.map(order => {
+                                    const date = new Date(order.createdAt).toLocaleDateString();
+                                    const itemCount = order.items?.length || 0;
+                                    const orderTotal = (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                                    return `
+                                        <div class="bg-white rounded p-2 text-sm border-l-2 border-indigo-300">
+                                            <div class="flex justify-between text-gray-600">
+                                                <span>${date}</span>
+                                                <span>${order.categoryName || 'General'}${orderTotal > 0 ? ` - ₪${orderTotal.toFixed(2)}` : ''}</span>
+                                            </div>
+                                            <div class="text-gray-800 mt-1">
+                                                ${order.items?.slice(0, 3).map(i => {
+                                                    const itemStr = `${i.name} x${i.quantity}`;
+                                                    return i.total > 0 ? `${itemStr} (₪${i.total.toFixed(2)})` : itemStr;
+                                                }).join(', ')}
+                                                ${itemCount > 3 ? `<span class="text-gray-400">+${itemCount - 3} more</span>` : ''}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                listContainer.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading order reports:', error);
+                summaryContainer.classList.add('hidden');
+                listContainer.innerHTML = '<p class="text-red-400 text-center py-4">Error loading orders</p>';
+            }
+        }
+
+        function calculateOrderStats(orders) {
+            const stats = {
+                totalOrders: orders.length,
+                totalSpend: 0,
+                productTotals: {}, // { productName: { quantity, unit, spend } }
+                supplierTotals: {} // { supplierName: { orderCount, spend } }
+            };
+
+            orders.forEach(order => {
+                const supplierName = order.supplierName || 'No Supplier';
+
+                // Initialize supplier if not exists
+                if (!stats.supplierTotals[supplierName]) {
+                    stats.supplierTotals[supplierName] = { orderCount: 0, spend: 0 };
+                }
+                stats.supplierTotals[supplierName].orderCount++;
+
+                // Process items
+                (order.items || []).forEach(item => {
+                    const itemTotal = item.total || 0;
+                    stats.totalSpend += itemTotal;
+                    stats.supplierTotals[supplierName].spend += itemTotal;
+
+                    // Aggregate product quantities
+                    const key = item.name;
+                    if (!stats.productTotals[key]) {
+                        stats.productTotals[key] = { quantity: 0, unit: item.unit || 'item', spend: 0 };
+                    }
+                    stats.productTotals[key].quantity += item.quantity || 0;
+                    stats.productTotals[key].spend += itemTotal;
+                });
+            });
+
+            return stats;
+        }
+
+        function renderOrderSummary(container, stats) {
+            // Get top 5 products by quantity
+            const topProducts = Object.entries(stats.productTotals)
+                .sort((a, b) => b[1].quantity - a[1].quantity)
+                .slice(0, 5);
+
+            // Get suppliers sorted by spend
+            const suppliersBySpend = Object.entries(stats.supplierTotals)
+                .sort((a, b) => b[1].spend - a[1].spend);
+
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <!-- Monthly Summary -->
+                    <div class="bg-indigo-50 rounded-lg p-3">
+                        <div class="text-sm font-bold text-indigo-800 mb-2">MONTHLY SUMMARY</div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Orders:</span>
+                            <span class="font-medium">${stats.totalOrders}</span>
+                        </div>
+                        ${stats.totalSpend > 0 ? `
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Spend:</span>
+                            <span class="font-bold text-indigo-600">₪${stats.totalSpend.toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    ${topProducts.length > 0 ? `
+                    <!-- Top Products -->
+                    <div class="bg-amber-50 rounded-lg p-3">
+                        <div class="text-sm font-bold text-amber-800 mb-2">TOP PRODUCTS</div>
+                        <div class="space-y-1">
+                            ${topProducts.map(([name, data]) => {
+                                const unitLabel = data.unit === 'package' ? 'pkg' : 'items';
+                                return `
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-700">${name}</span>
+                                        <span class="text-gray-600">${data.quantity} ${unitLabel}${data.spend > 0 ? ` (₪${data.spend.toFixed(2)})` : ''}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${suppliersBySpend.length > 0 && stats.totalSpend > 0 ? `
+                    <!-- By Supplier -->
+                    <div class="bg-green-50 rounded-lg p-3">
+                        <div class="text-sm font-bold text-green-800 mb-2">BY SUPPLIER</div>
+                        <div class="space-y-1">
+                            ${suppliersBySpend.map(([name, data]) => `
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700">${name}</span>
+                                    <span class="text-gray-600">${data.spend > 0 ? `₪${data.spend.toFixed(2)}` : ''} (${data.orderCount} orders)</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            container.classList.remove('hidden');
+        }
+
+        function generateReportsText() {
+            if (currentOrderReports.length === 0) return 'No orders found';
+
+            // Calculate stats
+            const stats = calculateOrderStats(currentOrderReports);
+
+            let text = `ORDER REPORT - ${getMonthLabel(reportsCurrentMonth)}\n${'═'.repeat(30)}\n\n`;
+
+            // Monthly Summary
+            text += `MONTHLY SUMMARY\n${'─'.repeat(20)}\n`;
+            text += `Total Orders: ${stats.totalOrders}\n`;
+            if (stats.totalSpend > 0) {
+                text += `Total Spend: ₪${stats.totalSpend.toFixed(2)}\n`;
+            }
+            text += '\n';
+
+            // Top Products (up to 5)
+            const topProducts = Object.entries(stats.productTotals)
+                .sort((a, b) => b[1].quantity - a[1].quantity)
+                .slice(0, 5);
+            if (topProducts.length > 0) {
+                text += `TOP PRODUCTS\n${'─'.repeat(20)}\n`;
+                topProducts.forEach(([name, data]) => {
+                    const unitLabel = data.unit === 'package' ? 'pkg' : 'items';
+                    if (data.spend > 0) {
+                        text += `${name}: ${data.quantity} ${unitLabel} (₪${data.spend.toFixed(2)})\n`;
+                    } else {
+                        text += `${name}: ${data.quantity} ${unitLabel}\n`;
+                    }
+                });
+                text += '\n';
+            }
+
+            // By Supplier (if there's spend data)
+            const suppliersBySpend = Object.entries(stats.supplierTotals)
+                .sort((a, b) => b[1].spend - a[1].spend);
+            if (suppliersBySpend.length > 0 && stats.totalSpend > 0) {
+                text += `BY SUPPLIER\n${'─'.repeat(20)}\n`;
+                suppliersBySpend.forEach(([name, data]) => {
+                    text += `${name}: ₪${data.spend.toFixed(2)} (${data.orderCount} orders)\n`;
+                });
+                text += '\n';
+            }
+
+            text += `${'═'.repeat(30)}\n\n`;
+
+            // Group by supplier for detailed orders
+            const grouped = {};
+            currentOrderReports.forEach(order => {
+                const key = order.supplierName || 'No Supplier';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(order);
+            });
+
+            text += `ORDER DETAILS\n${'═'.repeat(30)}\n\n`;
+
+            Object.keys(grouped).sort().forEach(supplierName => {
+                const supplierTotal = grouped[supplierName].reduce((sum, order) => {
+                    return sum + (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                }, 0);
+                text += `${supplierName.toUpperCase()}`;
+                if (supplierTotal > 0) {
+                    text += ` (Total: ₪${supplierTotal.toFixed(2)})`;
+                }
+                text += `\n${'─'.repeat(20)}\n`;
+                grouped[supplierName].forEach(order => {
+                    const date = new Date(order.createdAt).toLocaleDateString();
+                    const orderTotal = (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                    text += `\n${date} - ${order.categoryName || 'General'}`;
+                    if (orderTotal > 0) {
+                        text += ` (₪${orderTotal.toFixed(2)})`;
+                    }
+                    text += `:\n`;
+                    order.items?.forEach(item => {
+                        const unitLabel = item.unit === 'package' ? 'pkg' : 'item';
+                        if (item.total > 0) {
+                            text += `  - ${item.name} x${item.quantity} (${unitLabel}) @ ₪${item.price?.toFixed(2) || '0.00'} = ₪${item.total.toFixed(2)}\n`;
+                        } else {
+                            text += `  - ${item.name} x${item.quantity} (${unitLabel})\n`;
+                        }
+                    });
+                });
+                text += '\n';
+            });
+
+            return text;
+        }
+
+        function copyOrderReports() {
+            const text = generateReportsText();
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Order report copied to clipboard!');
+            });
+        }
+
+        function printOrderReports() {
+            const text = generateReportsText();
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Order Report - ${getMonthLabel(reportsCurrentMonth)}</title>
+                    <style>
+                        body { font-family: monospace; white-space: pre-wrap; padding: 20px; }
+                    </style>
+                </head>
+                <body>${text}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function shareOrderReportsWhatsApp() {
+            const text = encodeURIComponent(generateReportsText());
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        // Close reports modal on backdrop click
+        document.getElementById('order-reports-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'order-reports-modal') closeOrderReportsModal();
+        });
+
+        // =====================================================
+        // END ORDER REPORTS SYSTEM
+        // =====================================================
+
         // Initialize
         updateLocationUI();
         loadState();
+        loadSuppliers();
         initTouchDrag();
         initTaskListTouchDrag();
 
