@@ -1807,28 +1807,17 @@
 
         // Apply default availability for employees who haven't submitted yet
         function scheduleApplyDefaults() {
-            console.log('scheduleApplyDefaults called');
-            console.log('scheduleEmployees:', scheduleEmployees);
-            console.log('scheduleWeekData:', scheduleWeekData);
             if (!scheduleWeekData) return;
             scheduleWeekData.availability = scheduleWeekData.availability || {};
 
             scheduleEmployees.forEach(emp => {
-                console.log('Checking employee:', emp.name, '| Looking for match in:', Object.keys(scheduleDefaultAvailability));
                 // Check if employee has default availability configured (by name)
                 const defaultConfig = scheduleDefaultAvailability[emp.name];
-                if (!defaultConfig) {
-                    console.log('No default config for:', emp.name);
-                    return;
-                }
+                if (!defaultConfig) return;
 
                 // Only apply if employee hasn't submitted availability for this week
-                if (scheduleWeekData.availability[emp.id]) {
-                    console.log('Already has availability:', emp.name);
-                    return;
-                }
+                if (scheduleWeekData.availability[emp.id]) return;
 
-                console.log('Applying defaults for:', emp.name);
                 // Build default availability object
                 const empAvailability = {};
                 scheduleDays.forEach(day => {
