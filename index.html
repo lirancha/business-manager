@@ -2625,26 +2625,31 @@
                 <title>Zucca - Weekly Schedule</title>
                 <style>
                     * { box-sizing: border-box; }
-                    body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; max-width: 1000px; margin: 0 auto; }
-                    .header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #7c3aed; }
-                    .header h1 { color: #7c3aed; margin: 0 0 10px 0; font-size: 28px; }
-                    .header .dates { color: #666; font-size: 16px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: right; }
-                    th { background: #7c3aed; color: white; font-weight: bold; }
-                    th .hours { font-weight: normal; font-size: 12px; opacity: 0.9; }
-                    .day-cell { background: #f3f4f6; font-weight: bold; width: 80px; }
-                    .shift-cell { vertical-align: top; min-width: 150px; }
-                    .location { margin-bottom: 5px; font-size: 14px; }
+                    body { font-family: Arial, sans-serif; padding: 10px; direction: rtl; max-width: 1000px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #7c3aed; }
+                    .header h1 { color: #7c3aed; margin: 0 0 5px 0; font-size: 22px; }
+                    .header .dates { color: #666; font-size: 14px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th, td { border: 1px solid #ddd; padding: 6px 4px; text-align: right; }
+                    th { background: #7c3aed; color: white; font-weight: bold; font-size: 13px; }
+                    th .hours { font-weight: normal; font-size: 10px; opacity: 0.9; }
+                    .day-cell { background: #f3f4f6; font-weight: bold; width: 70px; font-size: 12px; }
+                    .shift-cell { vertical-align: top; min-width: 120px; }
+                    .location { margin-bottom: 3px; font-size: 12px; }
                     .location:last-child { margin-bottom: 0; }
-                    .emp-entry { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 6px; background: #f0f0f0; border-radius: 4px; }
-                    .custom-hours { color: #666; font-size: 11px; }
+                    .emp-entry { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 4px; background: #f0f0f0; border-radius: 3px; font-size: 11px; }
+                    .custom-hours { color: #666; font-size: 9px; }
                     tr:nth-child(even) { background: #fafafa; }
-                    .legend { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; }
-                    .legend h3 { font-size: 14px; margin: 0 0 10px 0; color: #666; }
-                    .legend-items { display: flex; flex-wrap: wrap; gap: 8px; }
-                    .legend-item { padding: 4px 10px; border-radius: 4px; font-size: 12px; }
-                    @media print { body { padding: 10px; } .header h1 { font-size: 24px; } th, td { padding: 8px 6px; } }
+                    .legend { margin-top: 10px; padding-top: 8px; border-top: 1px solid #ddd; }
+                    .legend h3 { font-size: 12px; margin: 0 0 6px 0; color: #666; }
+                    .legend-items { display: flex; flex-wrap: wrap; gap: 5px; }
+                    .legend-item { padding: 2px 6px; border-radius: 3px; font-size: 10px; }
+                    @media print {
+                        body { padding: 5px; }
+                        .header h1 { font-size: 20px; }
+                        th, td { padding: 5px 4px; }
+                        table, .legend { page-break-inside: avoid; }
+                    }
                 </style>
             </head>
             <body>
