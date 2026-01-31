@@ -1596,29 +1596,25 @@
                 supplierPhone = currentOrderCategory.supplier.phone.replace(/^0/, '+972').replace(/[^+\d]/g, '');
             }
 
-            // Save order to history
-            if (currentOrderCategory) {
-                try {
-                    await api.createOrder({
-                        supplierId: currentOrderCategory.supplierId,
-                        supplierName: currentOrderCategory.supplier?.name || null,
-                        categoryId: currentOrderCategory.id,
-                        categoryName: currentOrderCategory.name,
-                        items: currentOrderCategory.items,
-                        orderText: orderText,
-                        location: currentLocation,
-                        sharedVia: 'whatsapp'
-                    });
-                } catch (error) {
-                    console.error('Error saving order:', error);
-                }
-            }
-
-            // Open WhatsApp with pre-filled phone if available
+            // Open WhatsApp FIRST (must be in direct user gesture to avoid popup blocking)
             if (supplierPhone) {
                 window.open(`https://wa.me/${supplierPhone}?text=${text}`, '_blank');
             } else {
                 window.open(`https://wa.me/?text=${text}`, '_blank');
+            }
+
+            // Save order to history (fire-and-forget, don't await to avoid blocking)
+            if (currentOrderCategory) {
+                api.createOrder({
+                    supplierId: currentOrderCategory.supplierId,
+                    supplierName: currentOrderCategory.supplier?.name || null,
+                    categoryId: currentOrderCategory.id,
+                    categoryName: currentOrderCategory.name,
+                    items: currentOrderCategory.items,
+                    orderText: orderText,
+                    location: currentLocation,
+                    sharedVia: 'whatsapp'
+                }).catch(error => console.error('Error saving order:', error));
             }
         }
 
