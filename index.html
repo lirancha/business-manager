@@ -2597,12 +2597,22 @@
                 return `<span class="emp-entry" style="background:${bgColor}">${emp.name}</span>`;
             }
 
-            let tableRows = '';
+            // Build header row with days as columns
+            let headerRow = '<th>משמרת</th>';
             scheduleDays.forEach(day => {
-                tableRows += `<tr>
-                    <td class="day-cell">${scheduleDayLabelsHe[day]}</td>`;
+                headerRow += `<th>${scheduleDayLabelsHe[day]}</th>`;
+            });
 
-                scheduleShifts.forEach(shift => {
+            // Build table rows with shifts as rows
+            let tableRows = '';
+            scheduleShifts.forEach(shift => {
+                const shiftLabel = { morning: 'בוקר', afternoon: 'צהריים', evening: 'ערב' }[shift];
+                const shiftHours = `${scheduleFormatTime(scheduleShiftHours[shift].start)} - ${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+
+                tableRows += `<tr>
+                    <td class="shift-cell-label">${shiftLabel}<br><span class="hours">${shiftHours}</span></td>`;
+
+                scheduleDays.forEach(day => {
                     const isgavEmps = (scheduleFinalSchedule[day]?.[shift]?.isgav || [])
                         .map(a => getEmpWithHours(a, day, shift, empColorMap))
                         .filter(n => n)
@@ -2643,7 +2653,7 @@
                     th, td { border: 1px solid #ddd; padding: 6px 4px; text-align: right; }
                     th { background: #7c3aed; color: white; font-weight: bold; font-size: 13px; }
                     th .hours { font-weight: normal; font-size: 10px; opacity: 0.9; }
-                    .day-cell { background: #f3f4f6; font-weight: bold; width: 70px; font-size: 12px; }
+                    .shift-cell-label { background: #f3f4f6; font-weight: bold; width: 70px; font-size: 12px; text-align: center; }
                     .shift-cell { vertical-align: top; min-width: 120px; }
                     .location { margin-bottom: 3px; font-size: 12px; }
                     .location:last-child { margin-bottom: 0; }
@@ -2670,12 +2680,7 @@
                 </div>
                 <table>
                     <thead>
-                        <tr>
-                            <th>יום</th>
-                            <th>בוקר<br><span class="hours">${scheduleFormatTime(scheduleShiftHours.morning.start)} - ${scheduleFormatTime(scheduleShiftHours.morning.end)}</span></th>
-                            <th>צהריים<br><span class="hours">${scheduleFormatTime(scheduleShiftHours.afternoon.start)} - ${scheduleFormatTime(scheduleShiftHours.afternoon.end)}</span></th>
-                            <th>ערב<br><span class="hours">${scheduleFormatTime(scheduleShiftHours.evening.start)} - ${scheduleFormatTime(scheduleShiftHours.evening.end)}</span></th>
-                        </tr>
+                        <tr>${headerRow}</tr>
                     </thead>
                     <tbody>${tableRows}</tbody>
                 </table>
