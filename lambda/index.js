@@ -34,27 +34,44 @@ const TABLES = {
     locations: `${TABLE_PREFIX}-locations`,
     schedules: `${TABLE_PREFIX}-schedules`,
     reminders: `${TABLE_PREFIX}-reminders`,
-    backups: `${TABLE_PREFIX}-backups`
+    backups: `${TABLE_PREFIX}-backups`,
+    suppliers: `${TABLE_PREFIX}-suppliers`,
+    orders: `${TABLE_PREFIX}-orders`
 };
 
-// CORS headers
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://lirancha.github.io';
-const corsHeaders = {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-    'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key,Authorization',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Content-Type': 'application/json'
-};
+// CORS headers - supports multiple origins for local testing
+const ALLOWED_ORIGINS = [
+    'https://lirancha.github.io',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'null'  // For file:// access during local development
+];
+
+function getCorsHeaders(event) {
+    const origin = event?.headers?.origin || event?.headers?.Origin || '';
+    const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key,Authorization',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Content-Type': 'application/json'
+    };
+}
 
 /**
  * Main Lambda handler
  */
 exports.handler = async (event) => {
     console.log('Event:', JSON.stringify(event, null, 2));
+    currentEvent = event; // Store for CORS handling
 
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
-        return response(200, { message: 'OK' });
+        return {
+            statusCode: 200,
+            headers: getCorsHeaders(event),
+            body: JSON.stringify({ message: 'OK' })
+        };
     }
 
     const path = event.path;
@@ -123,6 +140,30 @@ exports.handler = async (event) => {
             if (method === 'POST') return await testTelegram();
         }
 
+        // =====================================================
+        // SUPPLIERS & ORDERS
+        // =====================================================
+
+        // /suppliers
+        if (path === '/suppliers') {
+            if (method === 'GET') return await listSuppliers(event.queryStringParameters);
+            if (method === 'POST') return await createSupplier(body);
+        }
+
+        // /suppliers/{id}
+        if (path.match(/^\/suppliers\/[^/]+$/)) {
+            const id = pathParams.id || path.split('/').pop();
+            if (method === 'PUT') return await updateSupplier(id, body);
+            if (method === 'DELETE') return await deleteSupplier(id);
+        }
+
+        // /orders
+        if (path === '/orders') {
+            if (method === 'GET') return await listOrders(event.queryStringParameters);
+            if (method === 'POST') return await createOrder(body);
+            if (method === 'DELETE') return await deleteAllOrders();
+        }
+
         return response(404, { error: 'Not found' });
     } catch (error) {
         console.error('Error:', error);
@@ -155,6 +196,44 @@ async function getLocation(locationId) {
 async function saveLocation(locationId, data) {
     if (!data) {
         return response(400, { error: 'Missing data' });
+    }
+
+    // SAFETY: Block if both arrays are empty - prevents accidental data wipe
+    const categoryCount = data.categories?.length || 0;
+    const taskListCount = data.taskLists?.length || 0;
+    if (categoryCount === 0 && taskListCount === 0) {
+        console.warn('[Lambda] Blocked saving empty state for location:', locationId);
+        return response(400, { error: 'Cannot save empty state - both categories and taskLists are empty' });
+    }
+
+    // SAFETY: Detect suspicious data reduction
+    const currentResult = await docClient.send(new GetCommand({
+        TableName: TABLES.locations,
+        Key: { id: locationId }
+    }));
+    const current = currentResult.Item;
+
+    if (current) {
+        const prevProductCount = current.categories?.reduce((sum, c) => sum + (c.products?.length || 0), 0) || 0;
+        const newProductCount = data.categories?.reduce((sum, c) => sum + (c.products?.length || 0), 0) || 0;
+        const prevTaskCount = current.taskLists?.reduce((sum, t) => sum + (t.tasks?.length || 0), 0) || 0;
+        const newTaskCount = data.taskLists?.reduce((sum, t) => sum + (t.tasks?.length || 0), 0) || 0;
+
+        // Block if we had significant data and now have almost nothing
+        if ((prevProductCount > 10 && newProductCount < 3) ||
+            (prevTaskCount > 10 && newTaskCount < 3)) {
+            console.error('[Lambda] BLOCKED suspicious data loss!', {
+                location: locationId,
+                previousProducts: prevProductCount,
+                newProducts: newProductCount,
+                previousTasks: prevTaskCount,
+                newTasks: newTaskCount
+            });
+            return response(400, {
+                error: 'Suspicious data reduction detected',
+                details: `Previous: ${prevProductCount} products, ${prevTaskCount} tasks. New: ${newProductCount} products, ${newTaskCount} tasks.`
+            });
+        }
     }
 
     // Increment version for change detection
@@ -502,13 +581,180 @@ async function testTelegram() {
 }
 
 // =====================================================
+// SUPPLIERS
+// =====================================================
+
+async function listSuppliers(queryParams) {
+    const result = await docClient.send(new ScanCommand({
+        TableName: TABLES.suppliers
+    }));
+
+    let items = result.Items || [];
+
+    // Filter by location
+    if (queryParams?.location) {
+        items = items.filter(s => s.location === queryParams.location);
+    }
+
+    // Sort by name
+    items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    return response(200, items);
+}
+
+async function createSupplier(data) {
+    if (!data || !data.name) {
+        return response(400, { error: 'Missing required field: name' });
+    }
+
+    const id = `sup-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const item = {
+        id,
+        name: data.name,
+        phone: data.phone || null,
+        notes: data.notes || null,
+        location: data.location || 'isgav',
+        createdAt: new Date().toISOString()
+    };
+
+    await docClient.send(new PutCommand({
+        TableName: TABLES.suppliers,
+        Item: item
+    }));
+
+    return response(201, item);
+}
+
+async function updateSupplier(id, data) {
+    // Get existing supplier
+    const existing = await docClient.send(new GetCommand({
+        TableName: TABLES.suppliers,
+        Key: { id }
+    }));
+
+    if (!existing.Item) {
+        return response(404, { error: 'Supplier not found' });
+    }
+
+    const item = {
+        ...existing.Item,
+        name: data.name || existing.Item.name,
+        phone: data.phone !== undefined ? data.phone : existing.Item.phone,
+        notes: data.notes !== undefined ? data.notes : existing.Item.notes,
+        location: data.location || existing.Item.location,
+        updatedAt: new Date().toISOString()
+    };
+
+    await docClient.send(new PutCommand({
+        TableName: TABLES.suppliers,
+        Item: item
+    }));
+
+    return response(200, item);
+}
+
+async function deleteSupplier(id) {
+    await docClient.send(new DeleteCommand({
+        TableName: TABLES.suppliers,
+        Key: { id }
+    }));
+
+    return response(200, { message: 'Deleted' });
+}
+
+// =====================================================
+// ORDERS
+// =====================================================
+
+async function listOrders(queryParams) {
+    const result = await docClient.send(new ScanCommand({
+        TableName: TABLES.orders
+    }));
+
+    let items = result.Items || [];
+
+    // Filter by location
+    if (queryParams?.location) {
+        items = items.filter(order => order.location === queryParams.location);
+    }
+
+    // Filter by month (format: YYYY-MM)
+    if (queryParams?.month) {
+        items = items.filter(order => order.date && order.date.startsWith(queryParams.month));
+    }
+
+    // Filter by supplier
+    if (queryParams?.supplier) {
+        items = items.filter(order => order.supplierId === queryParams.supplier);
+    }
+
+    // Sort by date descending
+    items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return response(200, items);
+}
+
+async function createOrder(data) {
+    if (!data || !data.items || data.items.length === 0) {
+        return response(400, { error: 'Missing required field: items' });
+    }
+
+    const id = `ord-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
+
+    const item = {
+        id,
+        supplierId: data.supplierId || null,
+        supplierName: data.supplierName || null,
+        categoryId: data.categoryId || null,
+        categoryName: data.categoryName || null,
+        date: data.date || now.toISOString().split('T')[0], // YYYY-MM-DD
+        items: data.items, // [{name, quantity, unit}]
+        orderText: data.orderText || null,
+        location: data.location || 'isgav',
+        sharedVia: data.sharedVia || 'manual',
+        createdAt: now.toISOString()
+    };
+
+    await docClient.send(new PutCommand({
+        TableName: TABLES.orders,
+        Item: item
+    }));
+
+    return response(201, item);
+}
+
+async function deleteAllOrders() {
+    // Get all orders
+    const result = await docClient.send(new ScanCommand({
+        TableName: TABLES.orders
+    }));
+
+    const items = result.Items || [];
+
+    // Delete each order
+    for (const item of items) {
+        await docClient.send(new DeleteCommand({
+            TableName: TABLES.orders,
+            Key: { id: item.id }
+        }));
+    }
+
+    return response(200, { deleted: items.length });
+}
+
+// =====================================================
 // HELPERS
 // =====================================================
+
+// Store current event for CORS handling
+let currentEvent = null;
 
 function response(statusCode, body) {
     return {
         statusCode,
-        headers: corsHeaders,
+        headers: getCorsHeaders(currentEvent),
         body: JSON.stringify(body)
     };
 }
