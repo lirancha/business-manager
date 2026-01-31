@@ -2538,13 +2538,34 @@
             const startStr = `${scheduleCurrentWeekStart.getDate()}/${scheduleCurrentWeekStart.getMonth() + 1}/${scheduleCurrentWeekStart.getFullYear()}`;
             const endStr = `${weekEnd.getDate()}/${weekEnd.getMonth() + 1}/${weekEnd.getFullYear()}`;
 
+            // Distinct, print-friendly colors (good contrast with black text)
+            const employeeColors = [
+                '#FFB3BA', // light pink
+                '#BAFFC9', // light green
+                '#BAE1FF', // light blue
+                '#FFFFBA', // light yellow
+                '#FFDFBA', // light orange
+                '#E0BBE4', // light purple
+                '#D4F0F0', // light cyan
+                '#FCE4EC', // pink
+                '#C8E6C9', // green
+                '#BBDEFB', // blue
+            ];
+
+            // Map each employee to a color
+            const empColorMap = {};
+            scheduleEmployees.forEach((emp, index) => {
+                empColorMap[emp.id] = employeeColors[index % employeeColors.length];
+            });
+
             // Get employee with hours - returns HTML with name and hours on separate lines
             // Priority: 1. Manager custom hours, 2. Employee availability hours, 3. No hours (default)
-            function getEmpWithHours(assignment, day, shift) {
+            function getEmpWithHours(assignment, day, shift, colorMap) {
                 const empId = typeof assignment === 'object' ? assignment.id : assignment;
                 const emp = scheduleEmployees.find(e => e.id === empId);
                 if (!emp) return '';
 
+                const bgColor = colorMap[empId] || '#f0f0f0';
                 const defaultHrs = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
                 let customHrs = null;
 
@@ -2561,9 +2582,9 @@
 
                 // Only show hours if different from default
                 if (customHrs && customHrs !== defaultHrs) {
-                    return `<span class="emp-entry">${emp.name}<br><small class="custom-hours">${customHrs}</small></span>`;
+                    return `<span class="emp-entry" style="background:${bgColor}">${emp.name}<br><small class="custom-hours">${customHrs}</small></span>`;
                 }
-                return `<span class="emp-entry">${emp.name}</span>`;
+                return `<span class="emp-entry" style="background:${bgColor}">${emp.name}</span>`;
             }
 
             let tableRows = '';
@@ -2573,11 +2594,11 @@
 
                 scheduleShifts.forEach(shift => {
                     const isgavEmps = (scheduleFinalSchedule[day]?.[shift]?.isgav || [])
-                        .map(a => getEmpWithHours(a, day, shift))
+                        .map(a => getEmpWithHours(a, day, shift, empColorMap))
                         .filter(n => n)
                         .join(' ') || '-';
                     const frankfurtEmps = (scheduleFinalSchedule[day]?.[shift]?.frankfurt || [])
-                        .map(a => getEmpWithHours(a, day, shift))
+                        .map(a => getEmpWithHours(a, day, shift, empColorMap))
                         .filter(n => n)
                         .join(' ') || '-';
 
@@ -2589,6 +2610,12 @@
 
                 tableRows += `</tr>`;
             });
+
+            // Generate legend items
+            const legendItems = scheduleEmployees.map(emp => {
+                const color = empColorMap[emp.id];
+                return `<span class="legend-item" style="background:${color}">${emp.name}</span>`;
+            }).join('');
 
             const html = `
             <!DOCTYPE html>
@@ -2613,6 +2640,10 @@
                     .emp-entry { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 6px; background: #f0f0f0; border-radius: 4px; }
                     .custom-hours { color: #666; font-size: 11px; }
                     tr:nth-child(even) { background: #fafafa; }
+                    .legend { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; }
+                    .legend h3 { font-size: 14px; margin: 0 0 10px 0; color: #666; }
+                    .legend-items { display: flex; flex-wrap: wrap; gap: 8px; }
+                    .legend-item { padding: 4px 10px; border-radius: 4px; font-size: 12px; }
                     @media print { body { padding: 10px; } .header h1 { font-size: 24px; } th, td { padding: 8px 6px; } }
                 </style>
             </head>
@@ -2632,6 +2663,10 @@
                     </thead>
                     <tbody>${tableRows}</tbody>
                 </table>
+                <div class="legend">
+                    <h3>מקרא צבעים</h3>
+                    <div class="legend-items">${legendItems}</div>
+                </div>
             </body>
             </html>
             `;
