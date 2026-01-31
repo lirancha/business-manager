@@ -643,6 +643,39 @@
             </div>
         </div>
     </div>
+    <!-- Shift Hours Modal -->
+    <div id="shift-hours-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold" dir="rtl">שעות משמרת</h2>
+                <button onclick="closeShiftHoursModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 space-y-4">
+                <div id="shift-hours-employee-name" class="text-center font-medium text-gray-700"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1" dir="rtl">התחלה</label>
+                        <input type="time" id="shift-hours-start" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1" dir="rtl">סיום</label>
+                        <input type="time" id="shift-hours-end" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="saveShiftCustomHours()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700">
+                    שמור
+                </button>
+                <button onclick="clearShiftCustomHours()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    ברירת מחדל
+                </button>
+                <button onclick="closeShiftHoursModal()" class="flex-1 bg-gray-100 py-3 rounded-lg font-medium hover:bg-gray-200">
+                    ביטול
+                </button>
+            </div>
+        </div>
+    </div>
 </div><!-- end app-wrapper -->
 
     <script>
@@ -2131,7 +2164,7 @@
                 if (data && (data.availability || data.finalSchedule)) {
                     scheduleWeekData = data;
                     if (scheduleWeekData.finalSchedule) {
-                        scheduleFinalSchedule = scheduleWeekData.finalSchedule;
+                        scheduleFinalSchedule = scheduleMigrateFinalSchedule(scheduleWeekData.finalSchedule);
                     } else {
                         scheduleInitFinalSchedule();
                     }
@@ -2145,6 +2178,29 @@
             }
             // Apply default availability for full-time employees (display only, not saved)
             scheduleApplyDefaults();
+        }
+
+        // Migrate old finalSchedule format (array of IDs) to new format (array of objects)
+        function scheduleMigrateFinalSchedule(schedule) {
+            const migrated = {};
+            for (const day of Object.keys(schedule)) {
+                migrated[day] = {};
+                for (const shift of Object.keys(schedule[day])) {
+                    migrated[day][shift] = {};
+                    for (const loc of Object.keys(schedule[day][shift])) {
+                        const arr = schedule[day][shift][loc] || [];
+                        migrated[day][shift][loc] = arr.map(item => {
+                            // If already an object with id, keep it
+                            if (typeof item === 'object' && item.id !== undefined) {
+                                return item;
+                            }
+                            // Otherwise it's a plain ID - convert to object
+                            return { id: item, customHours: null };
+                        });
+                    }
+                }
+            }
+            return migrated;
         }
 
         // Apply default availability for employees who haven't submitted yet
@@ -2303,18 +2359,23 @@
                                 const assigned = scheduleFinalSchedule[day]?.[shift]?.[loc] || [];
                                 const hasAssignment = assigned.length > 0;
 
-                                // Build assigned chips
-                                let assignedChips = assigned.map(empId => {
+                                // Build assigned chips (now objects with {id, customHours})
+                                let assignedChips = assigned.map(assignment => {
+                                    const empId = assignment.id;
                                     const emp = scheduleEmployees.find(e => e.id === empId);
                                     if (!emp) return '';
-                                    return `<span class="employee-chip chip-assigned" onclick="scheduleRemoveFromShift('${day}', '${shift}', '${loc}', ${empId})">
-                                        <span class="remove-btn">&times;</span>${emp.name}
+                                    const hasCustom = assignment.customHours !== null;
+                                    const customHoursText = hasCustom ? ` (${scheduleFormatTime(assignment.customHours.start)}-${scheduleFormatTime(assignment.customHours.end)})` : '';
+                                    return `<span class="employee-chip chip-assigned ${hasCustom ? 'ring-2 ring-yellow-400' : ''}" style="cursor: pointer;">
+                                        <span class="remove-btn" onclick="event.stopPropagation(); scheduleRemoveFromShift('${day}', '${shift}', '${loc}', ${empId})">&times;</span>
+                                        <span onclick="openShiftHoursModal('${day}', '${shift}', '${loc}', ${empId})">${emp.name}${customHoursText}</span>
                                     </span>`;
                                 }).join('');
 
                                 // Build available employees pool
+                                const assignedIds = assigned.map(a => a.id);
                                 let availablePool = scheduleEmployees
-                                    .filter(emp => !assigned.includes(emp.id))
+                                    .filter(emp => !assignedIds.includes(emp.id))
                                     .map(emp => {
                                         const info = scheduleGetEmployeeAvailability(emp.id, day, shift);
                                         let chipClass = info.available ? (info.customHours ? 'chip-partial' : 'chip-available') : 'chip-not-available';
@@ -2354,8 +2415,9 @@
             if (!scheduleFinalSchedule[day]) scheduleFinalSchedule[day] = {};
             if (!scheduleFinalSchedule[day][shift]) scheduleFinalSchedule[day][shift] = { isgav: [], frankfurt: [] };
 
-            if (!scheduleFinalSchedule[day][shift][location].includes(empId)) {
-                scheduleFinalSchedule[day][shift][location].push(empId);
+            const alreadyAssigned = scheduleFinalSchedule[day][shift][location].some(item => item.id === empId);
+            if (!alreadyAssigned) {
+                scheduleFinalSchedule[day][shift][location].push({ id: empId, customHours: null });
                 scheduleRenderScheduleBuilder();
             }
         }
@@ -2363,9 +2425,64 @@
         // Remove employee from shift
         function scheduleRemoveFromShift(day, shift, location, empId) {
             if (scheduleFinalSchedule[day]?.[shift]?.[location]) {
-                scheduleFinalSchedule[day][shift][location] = scheduleFinalSchedule[day][shift][location].filter(id => id !== empId);
+                scheduleFinalSchedule[day][shift][location] = scheduleFinalSchedule[day][shift][location].filter(item => item.id !== empId);
                 scheduleRenderScheduleBuilder();
             }
+        }
+
+        // Custom hours modal state
+        let shiftHoursModalState = { day: null, shift: null, location: null, empId: null };
+
+        function openShiftHoursModal(day, shift, location, empId) {
+            shiftHoursModalState = { day, shift, location, empId };
+            const emp = scheduleEmployees.find(e => e.id === empId);
+            const assignment = scheduleFinalSchedule[day]?.[shift]?.[location]?.find(a => a.id === empId);
+
+            document.getElementById('shift-hours-employee-name').textContent = emp?.name || '';
+
+            // Pre-fill with existing custom hours or default shift hours
+            if (assignment?.customHours) {
+                document.getElementById('shift-hours-start').value = assignment.customHours.start;
+                document.getElementById('shift-hours-end').value = assignment.customHours.end;
+            } else {
+                document.getElementById('shift-hours-start').value = scheduleShiftHours[shift].start;
+                document.getElementById('shift-hours-end').value = scheduleShiftHours[shift].end;
+            }
+
+            document.getElementById('shift-hours-modal').classList.remove('hidden');
+        }
+
+        function saveShiftCustomHours() {
+            const { day, shift, location, empId } = shiftHoursModalState;
+            const start = document.getElementById('shift-hours-start').value;
+            const end = document.getElementById('shift-hours-end').value;
+
+            if (!start || !end) {
+                alert('Please enter both start and end times');
+                return;
+            }
+
+            const assignment = scheduleFinalSchedule[day]?.[shift]?.[location]?.find(a => a.id === empId);
+            if (assignment) {
+                assignment.customHours = { start, end };
+                scheduleRenderScheduleBuilder();
+            }
+            closeShiftHoursModal();
+        }
+
+        function clearShiftCustomHours() {
+            const { day, shift, location, empId } = shiftHoursModalState;
+            const assignment = scheduleFinalSchedule[day]?.[shift]?.[location]?.find(a => a.id === empId);
+            if (assignment) {
+                assignment.customHours = null;
+                scheduleRenderScheduleBuilder();
+            }
+            closeShiftHoursModal();
+        }
+
+        function closeShiftHoursModal() {
+            document.getElementById('shift-hours-modal').classList.add('hidden');
+            shiftHoursModalState = { day: null, shift: null, location: null, empId: null };
         }
 
         async function scheduleSaveSchedule() {
@@ -2398,9 +2515,14 @@
             const result = [];
             scheduleDays.forEach(day => {
                 scheduleShifts.forEach(shift => {
-                    const hours = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+                    const defaultHours = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
                     scheduleLocations.forEach(loc => {
-                        if (scheduleFinalSchedule[day]?.[shift]?.[loc]?.includes(empId)) {
+                        const assignment = scheduleFinalSchedule[day]?.[shift]?.[loc]?.find(a => a.id === empId);
+                        if (assignment) {
+                            // Use manager custom hours if set, otherwise default
+                            const hours = assignment.customHours
+                                ? `${scheduleFormatTime(assignment.customHours.start)}-${scheduleFormatTime(assignment.customHours.end)}`
+                                : defaultHours;
                             result.push(`${scheduleDayLabelsHe[day]} - ${scheduleShiftLabelsHe[shift]} (${hours}) @ ${loc === 'isgav' ? 'Isgav' : 'Frankfurt'}`);
                         }
                     });
@@ -2416,18 +2538,32 @@
             const startStr = `${scheduleCurrentWeekStart.getDate()}/${scheduleCurrentWeekStart.getMonth() + 1}/${scheduleCurrentWeekStart.getFullYear()}`;
             const endStr = `${weekEnd.getDate()}/${weekEnd.getMonth() + 1}/${weekEnd.getFullYear()}`;
 
-            function getEmpWithHours(empId, day, shift) {
+            // Get employee with hours - returns HTML with name and hours on separate lines
+            // Priority: 1. Manager custom hours, 2. Employee availability hours, 3. No hours (default)
+            function getEmpWithHours(assignment, day, shift) {
+                const empId = typeof assignment === 'object' ? assignment.id : assignment;
                 const emp = scheduleEmployees.find(e => e.id === empId);
                 if (!emp) return '';
 
-                const avail = scheduleWeekData?.availability?.[empId]?.[day]?.[shift];
                 const defaultHrs = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+                let customHrs = null;
 
-                if (avail && typeof avail === 'object' && avail.customHours) {
-                    const customHrs = `${scheduleFormatTime(avail.customHours.start)}-${scheduleFormatTime(avail.customHours.end)}`;
-                    return `${emp.name} (${customHrs})`;
+                // 1. Check manager-assigned custom hours first
+                if (typeof assignment === 'object' && assignment.customHours) {
+                    customHrs = `${scheduleFormatTime(assignment.customHours.start)}-${scheduleFormatTime(assignment.customHours.end)}`;
+                } else {
+                    // 2. Check employee availability custom hours
+                    const avail = scheduleWeekData?.availability?.[empId]?.[day]?.[shift];
+                    if (avail && typeof avail === 'object' && avail.customHours) {
+                        customHrs = `${scheduleFormatTime(avail.customHours.start)}-${scheduleFormatTime(avail.customHours.end)}`;
+                    }
                 }
-                return `${emp.name} (${defaultHrs})`;
+
+                // Only show hours if different from default
+                if (customHrs && customHrs !== defaultHrs) {
+                    return `<span class="emp-entry">${emp.name}<br><small class="custom-hours">${customHrs}</small></span>`;
+                }
+                return `<span class="emp-entry">${emp.name}</span>`;
             }
 
             let tableRows = '';
@@ -2437,13 +2573,13 @@
 
                 scheduleShifts.forEach(shift => {
                     const isgavEmps = (scheduleFinalSchedule[day]?.[shift]?.isgav || [])
-                        .map(id => getEmpWithHours(id, day, shift))
+                        .map(a => getEmpWithHours(a, day, shift))
                         .filter(n => n)
-                        .join(', ') || '-';
+                        .join(' ') || '-';
                     const frankfurtEmps = (scheduleFinalSchedule[day]?.[shift]?.frankfurt || [])
-                        .map(id => getEmpWithHours(id, day, shift))
+                        .map(a => getEmpWithHours(a, day, shift))
                         .filter(n => n)
-                        .join(', ') || '-';
+                        .join(' ') || '-';
 
                     tableRows += `<td class="shift-cell">
                         <div class="location"><strong>Isgav:</strong> ${isgavEmps}</div>
@@ -2474,6 +2610,8 @@
                     .shift-cell { vertical-align: top; min-width: 150px; }
                     .location { margin-bottom: 5px; font-size: 14px; }
                     .location:last-child { margin-bottom: 0; }
+                    .emp-entry { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 6px; background: #f0f0f0; border-radius: 4px; }
+                    .custom-hours { color: #666; font-size: 11px; }
                     tr:nth-child(even) { background: #fafafa; }
                     @media print { body { padding: 10px; } .header h1 { font-size: 24px; } th, td { padding: 8px 6px; } }
                 </style>
