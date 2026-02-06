@@ -789,7 +789,7 @@
                                     <input type="checkbox" ${task.done ? 'checked' : ''}
                                            onchange="toggleTask(${taskList.id}, ${task.id})"
                                            class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
-                                    <span class="flex-1 text-right ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                                    <span class="flex-1 text-right ${task.done ? 'line-through text-gray-400' : ''}">${task.text.replace(/\n/g, '<br>')}</span>
                                 </div>
                             `).join('')}
                             ${taskList.tasks.length === 0 ? '<p class="text-gray-400 text-sm py-2">No tasks</p>' : ''}

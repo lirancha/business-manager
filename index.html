@@ -703,6 +703,33 @@
             taskLists: []
         };
 
+        // GAFAR task lists that require automatic Hebrew→Russian translation (ISGAV only)
+        const GAFAR_TASK_LIST_IDS = [1767449730926, 1767450707959];
+
+        async function translateHebrewToRussian(text) {
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=ru&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                return data[0].map(segment => segment[0]).join('');
+            } catch (error) {
+                console.warn('Translation failed, saving Hebrew only:', error);
+                return null;
+            }
+        }
+
+        function isGafarTaskList(listId) {
+            if (currentLocation !== 'isgav') return false;
+            if (GAFAR_TASK_LIST_IDS.includes(listId)) return true;
+            const taskList = state.taskLists.find(l => l.id === listId);
+            return taskList && taskList.name.startsWith('גאפר');
+        }
+
+        function hasRussianTranslation(text) {
+            return text.includes('\n') && text.split('\n').length >= 2;
+        }
+
         // UI State (not saved to backend)
         let expandedCategories = [];
         let expandedTaskLists = [];
@@ -1166,18 +1193,26 @@
             }
         }
 
-        function addTask(listId) {
+        async function addTask(listId) {
             const input = document.getElementById(`task-input-${listId}`);
             const text = input.value.trim();
             if (!text) return;
+            input.value = '';
+
+            let finalText = text;
+            if (isGafarTaskList(listId) && !hasRussianTranslation(text)) {
+                const russian = await translateHebrewToRussian(text);
+                if (russian) {
+                    finalText = text + '\n' + russian;
+                }
+            }
 
             const taskList = state.taskLists.find(l => l.id === listId);
             taskList.tasks.push({
                 id: Date.now(),
-                text: text,
+                text: finalText,
                 done: false
             });
-            input.value = '';
             saveState();
             renderTaskLists();
         }
@@ -1198,12 +1233,20 @@
         }
 
         // Edit task text
-        function editTask(listId, taskId) {
+        async function editTask(listId, taskId) {
             const taskList = state.taskLists.find(l => l.id === listId);
             const task = taskList.tasks.find(t => t.id === taskId);
-            const newText = prompt('Edit task:', task.text);
+            const hebrewLine = isGafarTaskList(listId) ? task.text.split('\n')[0] : task.text;
+            const newText = prompt('Edit task:', hebrewLine);
             if (newText !== null && newText.trim()) {
-                task.text = newText.trim();
+                let finalText = newText.trim();
+                if (isGafarTaskList(listId) && !hasRussianTranslation(finalText)) {
+                    const russian = await translateHebrewToRussian(finalText);
+                    if (russian) {
+                        finalText = finalText + '\n' + russian;
+                    }
+                }
+                task.text = finalText;
                 saveState();
                 renderTaskLists();
             }
@@ -1928,7 +1971,7 @@
                                     <input type="checkbox" ${task.done ? 'checked' : ''}
                                            onchange="toggleTask(${taskList.id}, ${task.id})"
                                            class="task-checkbox w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
-                                    <span class="task-text flex-1 text-right ${task.done ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                                    <span class="task-text flex-1 text-right ${task.done ? 'line-through text-gray-400' : ''}">${task.text.replace(/\n/g, '<br>')}</span>
                                     <button onclick="deleteTask(${taskList.id}, ${task.id})" class="task-delete text-gray-400 hover:text-red-500 text-lg px-2">
                                         &times;
                                     </button>
