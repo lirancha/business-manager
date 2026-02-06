@@ -183,3 +183,11 @@ EventBridge (every minute) → reminder-checker Lambda → Telegram Bot API
 - Account: `770493140072`
 
 **Telegram:** Configured and tested - notifications sent successfully even with browser closed.
+
+## Auto-Translation Rules
+
+**ISGAV location — Russian translations for GAFAR task lists:**
+- Task list "גאפר יום ראשון" (Гафар - задачи на воскресенье) — GAFAR Sunday tasks
+- Task list "גאפר כללי" (Гафар - разное) — GAFAR others
+
+Whenever a new task is added to either of these two task lists, **automatically add a Russian translation** below the Hebrew text. Format: Hebrew on the first line, Russian translation on the second line (separated by newline).
