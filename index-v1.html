@@ -1,0 +1,3660 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Zucca Café</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- AWS API Client (replaces Firebase) -->
+    <script src="api-client.js"></script>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            max-width: 100vw;
+        }
+        html {
+            overflow-x: hidden;
+            width: 100vw;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            max-width: 100vw;
+            overflow-x: hidden;
+            position: relative;
+        }
+        #app-wrapper {
+            width: 100vw;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+        .tab-active { border-bottom: 3px solid #3B82F6; color: #3B82F6; }
+        /* V1 Color Launcher */
+        .v1-tile { transition: transform .12s ease, box-shadow .12s ease; }
+        .v1-tile:active { transform: scale(.96); }
+        .v1-emp-chip { transition: transform .1s ease, box-shadow .1s ease; }
+        .v1-emp-chip.armed { box-shadow: 0 0 0 4px #1f2937; transform: scale(1.05); }
+        .v1-cell { transition: background-color .12s ease, border-color .12s ease; }
+        .task-item { transition: background-color 0.15s, box-shadow 0.15s; }
+        /* Schedule system styles */
+        .schedule-subtab-active { background-color: #7c3aed; color: white; }
+        .shift-cell { min-height: 70px; vertical-align: top; }
+        .employee-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            margin: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chip-available { background-color: #dcfce7; color: #166534; }
+        .chip-available:hover { background-color: #bbf7d0; }
+        .chip-partial { background-color: #fef3c7; color: #92400e; }
+        .chip-partial:hover { background-color: #fde68a; }
+        .chip-assigned { background-color: #3b82f6; color: white; }
+        .chip-assigned:hover { background-color: #2563eb; }
+        .chip-not-available { background-color: #fee2e2; color: #991b1b; opacity: 0.6; }
+        .chip-not-submitted { background-color: #e5e7eb; color: #6b7280; }
+        .slot-box {
+            min-height: 60px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 8px;
+            background: #f9fafb;
+        }
+        .slot-box.has-assignment {
+            border-style: solid;
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .remove-btn {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            margin-right: 2px;
+        }
+        .remove-btn:hover {
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+        }
+        .add-employee-pool {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 8px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+        .product-name {
+            flex: 1;
+            min-width: 0;
+        }
+        .qty-btn {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+        }
+        /* Force all flex containers to not overflow */
+        .flex {
+            max-width: 100%;
+        }
+        input, button {
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+<div id="app-wrapper">
+    <!-- ===== V1 Color Launcher navigation ===== -->
+    <header id="v1-topbar" dir="rtl" class="bg-white shadow-sm sticky top-0 z-20">
+        <!-- Home top bar: brand + location switcher -->
+        <div id="home-bar" class="px-4 py-3 flex items-center justify-between">
+            <div class="leading-tight">
+                <div class="text-[11px] font-black text-gray-400">ZUCCA CAFÉ</div>
+                <h1 id="location-name" class="text-xl font-extrabold text-gray-800">Isgav</h1>
+            </div>
+            <div class="flex gap-2">
+                <button class="location-btn px-3 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white"
+                        data-location="isgav" onclick="switchLocation('isgav')">Isgav</button>
+                <button class="location-btn px-3 py-1.5 rounded-full text-sm font-bold bg-gray-200 text-gray-700"
+                        data-location="frankfurt" onclick="switchLocation('frankfurt')">Frankfurt</button>
+            </div>
+        </div>
+        <!-- Section back bar (shown when inside a section) -->
+        <div id="section-bar" class="hidden items-center gap-3 px-4 py-3 text-white">
+            <button onclick="goHome()" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <div id="section-bar-icon" class="w-7 h-7 shrink-0"></div>
+            <h2 id="section-bar-title" class="text-xl font-extrabold flex-1"></h2>
+            <span id="section-loc" class="text-sm font-medium opacity-90"></span>
+        </div>
+        <!-- Original tab buttons kept (hidden) so switchTab() keeps working unchanged -->
+        <div class="hidden" aria-hidden="true">
+            <button id="tab-inventory" onclick="switchTab('inventory')">Inventory</button>
+            <button id="tab-tasks" onclick="switchTab('tasks')">Tasks</button>
+            <button id="tab-schedule" onclick="switchTab('schedule')">Schedule</button>
+            <button id="tab-reminders" onclick="switchTab('reminders')">Reminders</button>
+        </div>
+    </header>
+
+    <!-- Home screen: color launcher tiles (rendered by v1RenderHome) -->
+    <div id="home-screen" dir="rtl" class="px-4 py-5 max-w-3xl mx-auto"></div>
+
+    <!-- Main Content -->
+    <main id="app-main" class="pb-24 px-2">
+        <!-- Inventory Tab -->
+        <div id="inventory-tab" class="py-2">
+            <!-- Suppliers Section (Collapsible) -->
+            <div class="bg-white rounded-lg shadow mb-3">
+                <div class="bg-indigo-600 text-white px-3 py-2 flex justify-between items-center cursor-pointer rounded-t-lg" onclick="toggleSuppliersSection()">
+                    <div class="flex items-center gap-2">
+                        <span id="suppliers-toggle-icon" class="transition-transform">&gt;</span>
+                        <h3 class="font-bold text-sm">Suppliers</h3>
+                        <span id="suppliers-count" class="bg-indigo-500 text-white text-xs px-1.5 py-0.5 rounded-full">0</span>
+                    </div>
+                </div>
+                <div id="suppliers-section" class="hidden p-3">
+                    <!-- Add Supplier Form -->
+                    <div class="bg-gray-50 rounded-lg p-3 mb-3">
+                        <div class="space-y-2">
+                            <input type="text" id="new-supplier-name" placeholder="Supplier name..."
+                                   class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <div class="flex gap-2">
+                                <input type="tel" id="new-supplier-phone" placeholder="Phone (for WhatsApp)"
+                                       class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <button onclick="addSupplier()" class="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-600">
+                                    + Add
+                                </button>
+                            </div>
+                            <input type="text" id="new-supplier-notes" placeholder="Notes (optional)..."
+                                   class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    <!-- Suppliers List -->
+                    <div id="suppliers-list" class="space-y-2">
+                        <p class="text-gray-400 text-center py-2 text-sm">No suppliers yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Category -->
+            <div class="bg-white rounded-lg shadow p-3 mb-3">
+                <div class="flex gap-2">
+                    <input type="text" id="new-category" placeholder="New category name..."
+                           class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="addCategory()" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600">
+                        + Add
+                    </button>
+                </div>
+            </div>
+
+            <!-- Categories Container -->
+            <div id="categories-container"></div>
+
+            <!-- Generate Order Button -->
+            <div class="mt-4 space-y-2">
+                <button onclick="generateOrder()" class="w-full bg-amber-500 text-white py-3 rounded-lg font-bold hover:bg-amber-600 flex items-center justify-center gap-2">
+                    Generate Order List
+                </button>
+                <button onclick="openOrderReports()" class="w-full bg-indigo-500 text-white py-3 rounded-lg font-medium hover:bg-indigo-600 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    View Order Reports
+                </button>
+            </div>
+        </div>
+
+        <!-- Tasks Tab -->
+        <div id="tasks-tab" class="py-2 hidden">
+            <!-- Add Task List -->
+            <div class="bg-white rounded-lg shadow p-3 mb-3">
+                <div class="flex gap-2">
+                    <input type="text" id="new-task-list" placeholder="New task list (e.g., Opening Shift)..."
+                           class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="addTaskList()" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600">
+                        + Add
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task Lists Container -->
+            <div id="task-lists-container"></div>
+
+            <!-- Task Actions -->
+            <div class="mt-4">
+                <button onclick="shareAllTasks()" class="w-full bg-emerald-500 text-white py-3 rounded-lg font-medium hover:bg-emerald-600">
+                    Share All Tasks
+                </button>
+            </div>
+        </div>
+
+        <!-- Schedule Tab -->
+        <div id="schedule-tab" class="py-2 hidden">
+            <!-- Week Navigation -->
+            <div class="bg-white rounded-xl p-4 mb-4 shadow">
+                <div class="flex justify-between items-center">
+                    <button onclick="scheduleChangeWeek(-1)" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <div class="text-center">
+                        <div id="schedule-week-label" class="font-bold text-gray-800">Week Schedule</div>
+                        <div id="schedule-week-dates" class="text-sm text-gray-500"></div>
+                    </div>
+                    <button onclick="scheduleChangeWeek(1)" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-tabs -->
+            <div class="bg-white rounded-xl shadow mb-4">
+                <div class="flex gap-1 p-1">
+                    <button onclick="scheduleShowSubTab('employees')" id="schedule-subtab-employees" class="flex-1 py-2 px-3 rounded-lg text-center font-medium text-sm schedule-subtab-active">
+                        Employees
+                    </button>
+                    <button onclick="scheduleShowSubTab('availability')" id="schedule-subtab-availability" class="flex-1 py-2 px-3 rounded-lg text-center font-medium text-sm text-gray-500">
+                        Availability
+                    </button>
+                    <button onclick="scheduleShowSubTab('builder')" id="schedule-subtab-builder" class="flex-1 py-2 px-3 rounded-lg text-center font-medium text-sm text-gray-500">
+                        Build
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-content: Employees -->
+            <div id="schedule-content-employees" class="schedule-subcontent">
+                <div class="bg-white rounded-xl p-4 shadow mb-4">
+                    <h2 class="font-bold text-gray-800 mb-3">Add Employee</h2>
+                    <div class="space-y-2">
+                        <input type="text" id="schedule-new-employee-name" placeholder="Name" class="w-full p-2 border rounded-lg">
+                        <div class="flex gap-2">
+                            <input type="tel" id="schedule-new-employee-phone" placeholder="Phone" class="flex-1 p-2 border rounded-lg">
+                            <button onclick="scheduleAddEmployee()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-4 shadow">
+                    <h2 class="font-bold text-gray-800 mb-3">Employee List</h2>
+                    <div id="schedule-employee-list" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-white rounded-xl p-4 shadow mt-4">
+                    <h2 class="font-bold text-gray-800 mb-3">Shift Hours Settings</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-20 font-medium text-sm">Morning:</span>
+                            <input type="time" id="schedule-hours-morning-start" class="p-2 border rounded-lg text-sm" value="06:30">
+                            <span>-</span>
+                            <input type="time" id="schedule-hours-morning-end" class="p-2 border rounded-lg text-sm" value="12:30">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-20 font-medium text-sm">Afternoon:</span>
+                            <input type="time" id="schedule-hours-afternoon-start" class="p-2 border rounded-lg text-sm" value="12:30">
+                            <span>-</span>
+                            <input type="time" id="schedule-hours-afternoon-end" class="p-2 border rounded-lg text-sm" value="16:30">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-20 font-medium text-sm">Evening:</span>
+                            <input type="time" id="schedule-hours-evening-start" class="p-2 border rounded-lg text-sm" value="16:30">
+                            <span>-</span>
+                            <input type="time" id="schedule-hours-evening-end" class="p-2 border rounded-lg text-sm" value="20:30">
+                        </div>
+                        <button onclick="scheduleSaveShiftHours()" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700">
+                            Save Shift Hours
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button onclick="scheduleSendReminders()" class="w-full bg-green-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-green-600">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        Send Availability Reminder
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-content: Availability -->
+            <div id="schedule-content-availability" class="schedule-subcontent hidden">
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm" id="schedule-availability-table">
+                            <!-- Rendered dynamically -->
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-4 bg-white rounded-xl p-4 shadow">
+                    <h3 class="font-bold text-gray-800 mb-2">Legend</h3>
+                    <div class="flex flex-wrap gap-3 text-sm">
+                        <span class="employee-chip chip-available">Available (full)</span>
+                        <span class="employee-chip chip-partial">Partial hours</span>
+                        <span class="employee-chip chip-not-available">Not Available</span>
+                        <span class="employee-chip chip-not-submitted">Not submitted</span>
+                    </div>
+                </div>
+
+                <!-- Employee Notes Section -->
+                <div id="schedule-employee-notes" class="mt-4 bg-yellow-50 rounded-xl p-4 shadow hidden">
+                    <h3 class="font-bold text-gray-800 mb-2">📝 Employee Notes</h3>
+                    <div id="schedule-notes-list" class="space-y-2 text-sm"></div>
+                </div>
+            </div>
+
+            <!-- Schedule Sub-content: Builder -->
+            <div id="schedule-content-builder" class="schedule-subcontent hidden">
+                <div class="bg-white rounded-xl shadow overflow-hidden mb-4">
+                    <div class="bg-gray-800 text-white p-3 flex justify-between items-center">
+                        <span class="font-bold">Build Schedule</span>
+                        <button onclick="scheduleSaveSchedule()" class="bg-green-500 px-4 py-2 rounded-lg text-sm hover:bg-green-600 font-medium">
+                            Save Schedule
+                        </button>
+                    </div>
+                    <div id="schedule-builder" class="p-4">
+                        <!-- Schedule builder rendered here -->
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="schedulePrintSchedule()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-purple-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        Export PDF
+                    </button>
+                    <button onclick="scheduleSendScheduleToAll()" class="flex-1 bg-green-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-green-600">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        Send via WhatsApp
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Status Message -->
+            <div id="schedule-status-message" class="hidden mt-4 p-4 rounded-xl text-center font-medium"></div>
+        </div>
+
+        <!-- Reminders Tab -->
+        <div id="reminders-tab" class="py-2 hidden">
+            <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Reminders</h2>
+                    <div class="flex gap-2">
+                        <button onclick="testNotification()" class="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                            Test
+                        </button>
+                        <button onclick="requestNotificationPermission()" id="notification-btn" class="text-sm px-3 py-1 rounded-full bg-blue-100 text-blue-700">
+                            Enable Notifications
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Reminder Form -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                    <h3 class="font-medium text-gray-700 mb-3">Add New Reminder</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="reminder-title" placeholder="Reminder text (e.g., Order bread for tomorrow)"
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" dir="rtl">
+
+                        <div class="flex gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="reminder-type" value="recurring" checked onchange="toggleReminderType()">
+                                <span class="text-sm">Recurring</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="reminder-type" value="one-time" onchange="toggleReminderType()">
+                                <span class="text-sm">One-time</span>
+                            </label>
+                        </div>
+
+                        <!-- Time picker -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-600">Time:</label>
+                            <input type="time" id="reminder-time" value="20:00" class="px-3 py-2 border rounded-lg">
+                        </div>
+
+                        <!-- Days selection (for recurring) -->
+                        <div id="recurring-days" class="flex flex-wrap gap-2">
+                            <label class="text-sm text-gray-600 w-full">Days:</label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="sunday" class="reminder-day"> <span class="text-xs">Sun</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="monday" class="reminder-day"> <span class="text-xs">Mon</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="tuesday" class="reminder-day"> <span class="text-xs">Tue</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="wednesday" class="reminder-day"> <span class="text-xs">Wed</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="thursday" class="reminder-day"> <span class="text-xs">Thu</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="friday" class="reminder-day"> <span class="text-xs">Fri</span>
+                            </label>
+                            <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border cursor-pointer">
+                                <input type="checkbox" value="saturday" class="reminder-day"> <span class="text-xs">Sat</span>
+                            </label>
+                        </div>
+
+                        <!-- Date picker (for one-time) -->
+                        <div id="one-time-date" class="hidden">
+                            <label class="text-sm text-gray-600">Date:</label>
+                            <input type="date" id="reminder-date" class="px-3 py-2 border rounded-lg ml-2">
+                        </div>
+
+                        <button onclick="addReminder()" class="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700">
+                            Add Reminder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reminders List -->
+                <div id="reminders-list" class="space-y-2">
+                    <p class="text-gray-400 text-center py-4">No reminders yet</p>
+                </div>
+
+                <!-- Telegram Settings -->
+                <div id="telegram-section" class="bg-gray-50 rounded-lg p-4 mt-4">
+                    <!-- Collapsed state (when configured) -->
+                    <div id="telegram-collapsed" class="hidden">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <span class="text-green-600">✓</span>
+                                <span class="font-medium text-gray-700">Telegram Connected</span>
+                            </div>
+                            <button onclick="expandTelegramSettings()" class="text-sm text-blue-600 hover:text-blue-800">
+                                Edit
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Expanded state (form) -->
+                    <div id="telegram-expanded">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-medium text-gray-700">Telegram Notifications</h3>
+                            <span id="telegram-status" class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Not configured</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-3">Get reminders via Telegram message (works on iPhone!)</p>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-sm text-gray-600">Bot Token:</label>
+                                <input type="text" id="telegram-bot-token" placeholder="123456789:ABC..."
+                                       class="w-full px-3 py-2 border rounded-lg text-sm mt-1" autocomplete="off">
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-600">Chat ID:</label>
+                                <input type="text" id="telegram-chat-id" placeholder="Your chat ID"
+                                       class="w-full px-3 py-2 border rounded-lg text-sm mt-1" autocomplete="off">
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="saveTelegramSettings()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+                                    Save Settings
+                                </button>
+                                <button onclick="testTelegram()" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700">
+                                    Test Telegram
+                                </button>
+                            </div>
+                            <button onclick="showTelegramHelp()" class="w-full text-blue-600 text-sm underline">
+                                How to get Bot Token and Chat ID?
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Order Modal -->
+    <div id="order-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Missing Items Order</h2>
+                <button onclick="closeModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <pre id="order-text" class="bg-gray-100 p-4 rounded-lg text-sm whitespace-pre-wrap"></pre>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="copyOrder()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Copy
+                </button>
+                <button onclick="shareViaWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600">
+                    WhatsApp
+                </button>
+                <button onclick="shareViaEmail()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600">
+                    Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Select Tasks Modal -->
+    <div id="select-tasks-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Select Lists to Share</h2>
+                <button onclick="closeSelectModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <div id="task-list-checkboxes" class="space-y-3"></div>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="closeSelectModal()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button onclick="shareSelectedTasks()" class="flex-1 bg-emerald-500 text-white py-3 rounded-lg font-medium hover:bg-emerald-600">
+                    Share Selected
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="share-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Share Task List</h2>
+                <button onclick="closeShareModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <textarea id="share-note" placeholder="Add a note (optional)..."
+                    class="w-full p-3 border rounded-lg mb-3 text-sm resize-none" rows="2"></textarea>
+                <pre id="share-text" class="bg-gray-100 p-4 rounded-lg text-sm whitespace-pre-wrap"></pre>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="copyTaskList()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Copy
+                </button>
+                <button onclick="shareTasksWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600">
+                    WhatsApp
+                </button>
+                <button onclick="shareTasksEmail()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600">
+                    Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Reports Modal -->
+    <div id="order-reports-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold">Order Reports</h2>
+                <button onclick="closeOrderReportsModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <!-- Month Navigation -->
+            <div class="p-3 border-b bg-gray-50">
+                <div class="flex justify-between items-center mb-2">
+                    <button onclick="reportsChangeMonth(-1)" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <span id="reports-month-label" class="font-bold text-gray-800"></span>
+                    <button onclick="reportsChangeMonth(1)" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Supplier Filter -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600">Supplier:</label>
+                    <select id="reports-supplier-filter" onchange="loadOrderReports()" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                        <option value="">All Suppliers</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Summary Section -->
+            <div id="order-reports-summary" class="p-3 border-b hidden">
+                <!-- Populated dynamically -->
+            </div>
+            <!-- Orders List -->
+            <div class="p-4 overflow-y-auto flex-1">
+                <div id="order-reports-list" class="space-y-3">
+                    <p class="text-gray-400 text-center py-4">No orders found</p>
+                </div>
+            </div>
+            <!-- Export Buttons -->
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="copyOrderReports()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    Copy
+                </button>
+                <button onclick="printOrderReports()" class="flex-1 bg-indigo-500 text-white py-3 rounded-lg font-medium hover:bg-indigo-600">
+                    Print
+                </button>
+                <button onclick="shareOrderReportsWhatsApp()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600">
+                    Share
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Shift Hours Modal -->
+    <div id="shift-hours-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-lg font-bold" dir="rtl">שעות משמרת</h2>
+                <button onclick="closeShiftHoursModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 space-y-4">
+                <div id="shift-hours-employee-name" class="text-center font-medium text-gray-700"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1" dir="rtl">התחלה</label>
+                        <input type="time" id="shift-hours-start" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1" dir="rtl">סיום</label>
+                        <input type="time" id="shift-hours-end" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t flex gap-2">
+                <button onclick="saveShiftCustomHours()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700">
+                    שמור
+                </button>
+                <button onclick="clearShiftCustomHours()" class="flex-1 bg-gray-200 py-3 rounded-lg font-medium hover:bg-gray-300">
+                    ברירת מחדל
+                </button>
+                <button onclick="closeShiftHoursModal()" class="flex-1 bg-gray-100 py-3 rounded-lg font-medium hover:bg-gray-200">
+                    ביטול
+                </button>
+            </div>
+        </div>
+    </div>
+</div><!-- end app-wrapper -->
+
+    <script>
+        // AWS API Configuration
+        // UPDATE THIS URL after deploying your Lambda function
+        const API_BASE_URL = 'https://98mctlbso0.execute-api.eu-central-1.amazonaws.com/prod';
+
+        // Initialize API Client (replaces Firebase)
+        const api = new BusinessManagerAPI({
+            baseUrl: API_BASE_URL,
+            pollingInterval: 5000 // 5 second polling for real-time sync
+        });
+
+        // Location Configuration
+        const locations = [
+            { id: 'isgav', name: 'Zucca Isgav' },
+            { id: 'frankfurt', name: 'Zucca Frankfurt' }
+        ];
+        let currentLocation = localStorage.getItem('currentLocation') || 'isgav';
+        let unsubscribe = null;
+
+        // Data State
+        let state = {
+            categories: [],
+            taskLists: []
+        };
+
+        // GAFAR task lists that require automatic Hebrew→Russian translation (ISGAV only)
+        const GAFAR_TASK_LIST_IDS = [1767449730926, 1767450707959];
+
+        async function translateHebrewToRussian(text) {
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=ru&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                return data[0].map(segment => segment[0]).join('');
+            } catch (error) {
+                console.warn('Translation failed, saving Hebrew only:', error);
+                return null;
+            }
+        }
+
+        function isGafarTaskList(listId) {
+            if (currentLocation !== 'isgav') return false;
+            if (GAFAR_TASK_LIST_IDS.includes(listId)) return true;
+            const taskList = state.taskLists.find(l => l.id === listId);
+            return taskList && taskList.name.startsWith('גאפר');
+        }
+
+        function hasRussianTranslation(text) {
+            return text.includes('\n') && text.split('\n').length >= 2;
+        }
+
+        // UI State (not saved to backend)
+        let expandedCategories = [];
+        let expandedTaskLists = [];
+        let suppliersSectionExpanded = false;
+
+        // Suppliers State
+        let suppliers = [];
+
+        // Order Reports State
+        let reportsCurrentMonth = new Date();
+        let currentOrderCategory = null; // Track which category is being ordered
+
+        // Switch Location
+        function switchLocation(locationId) {
+            if (unsubscribe) unsubscribe();
+            currentLocation = locationId;
+            localStorage.setItem('currentLocation', locationId);
+            expandedCategories = [];
+            expandedTaskLists = [];
+            updateLocationUI();
+            loadState();
+            loadSuppliers();
+        }
+
+        function updateLocationUI() {
+            const locationName = locations.find(l => l.id === currentLocation)?.name || 'Zucca';
+            document.getElementById('location-name').textContent = locationName;
+            document.querySelectorAll('.location-btn').forEach(btn => {
+                btn.classList.toggle('bg-blue-600', btn.dataset.location === currentLocation);
+                btn.classList.toggle('text-white', btn.dataset.location === currentLocation);
+                btn.classList.toggle('bg-gray-200', btn.dataset.location !== currentLocation);
+                btn.classList.toggle('text-gray-700', btn.dataset.location !== currentLocation);
+            });
+        }
+
+        // Load from API and listen for real-time updates via polling
+        function loadState() {
+            unsubscribe = api.subscribeLocation(currentLocation, (data) => {
+                if (data) {
+                    state.categories = data.categories || [];
+                    state.taskLists = data.taskLists || [];
+                } else {
+                    // No data yet - show empty but DON'T save empty data
+                    state.categories = [];
+                    state.taskLists = [];
+                    console.log("No data found for location: " + currentLocation);
+                }
+                renderAll();
+                loadSuppliers();  // Sync suppliers on every poll for real-time updates
+            });
+        }
+
+        // Save to API with protection against data loss
+        async function saveState() {
+            // SAFETY: Never save if both arrays are empty - prevents accidental data wipe
+            if (state.categories.length === 0 && state.taskLists.length === 0) {
+                console.warn("Blocked saving empty state - this prevents accidental data loss");
+                return;
+            }
+
+            try {
+                // Save to API (backup is handled automatically by api client)
+                await api.saveLocation(currentLocation, {
+                    categories: state.categories,
+                    taskLists: state.taskLists
+                });
+            } catch (error) {
+                console.error("Error saving data:", error);
+                alert("Error saving. Please check your connection.");
+            }
+        }
+
+        // Tab Switching
+        function switchTab(tab) {
+            const inventoryTab = document.getElementById('inventory-tab');
+            const tasksTab = document.getElementById('tasks-tab');
+            const scheduleTab = document.getElementById('schedule-tab');
+            const remindersTab = document.getElementById('reminders-tab');
+            const tabInventory = document.getElementById('tab-inventory');
+            const tabTasks = document.getElementById('tab-tasks');
+            const tabSchedule = document.getElementById('tab-schedule');
+            const tabReminders = document.getElementById('tab-reminders');
+
+            // Hide all tabs
+            inventoryTab.classList.add('hidden');
+            tasksTab.classList.add('hidden');
+            scheduleTab.classList.add('hidden');
+            remindersTab.classList.add('hidden');
+
+            // Reset all tab buttons
+            tabInventory.classList.remove('tab-active');
+            tabInventory.classList.add('text-gray-500');
+            tabTasks.classList.remove('tab-active');
+            tabTasks.classList.add('text-gray-500');
+            tabSchedule.classList.remove('tab-active');
+            tabSchedule.classList.add('text-gray-500');
+            tabReminders.classList.remove('tab-active');
+            tabReminders.classList.add('text-gray-500');
+
+            // Show selected tab
+            if (tab === 'inventory') {
+                inventoryTab.classList.remove('hidden');
+                tabInventory.classList.add('tab-active');
+                tabInventory.classList.remove('text-gray-500');
+            } else if (tab === 'tasks') {
+                tasksTab.classList.remove('hidden');
+                tabTasks.classList.add('tab-active');
+                tabTasks.classList.remove('text-gray-500');
+            } else if (tab === 'schedule') {
+                scheduleTab.classList.remove('hidden');
+                tabSchedule.classList.add('tab-active');
+                tabSchedule.classList.remove('text-gray-500');
+                // Initialize schedule data when tab is opened
+                scheduleInit();
+            } else if (tab === 'reminders') {
+                remindersTab.classList.remove('hidden');
+                tabReminders.classList.add('tab-active');
+                tabReminders.classList.remove('text-gray-500');
+                // Initialize reminders when tab is opened
+                initReminders();
+            }
+        }
+
+        // =====================================================
+        // SUPPLIERS SYSTEM
+        // =====================================================
+
+        function toggleSuppliersSection() {
+            suppliersSectionExpanded = !suppliersSectionExpanded;
+            const section = document.getElementById('suppliers-section');
+            const icon = document.getElementById('suppliers-toggle-icon');
+            section.classList.toggle('hidden', !suppliersSectionExpanded);
+            icon.classList.toggle('rotate-90', suppliersSectionExpanded);
+        }
+
+        async function loadSuppliers() {
+            try {
+                suppliers = await api.listSuppliers(currentLocation);
+                renderSuppliers();
+            } catch (error) {
+                console.error('Error loading suppliers:', error);
+                suppliers = [];
+                renderSuppliers();
+            }
+        }
+
+        function renderSuppliers() {
+            const container = document.getElementById('suppliers-list');
+            const countEl = document.getElementById('suppliers-count');
+            countEl.textContent = suppliers.length;
+
+            if (suppliers.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-2 text-sm">No suppliers yet</p>';
+                return;
+            }
+
+            container.innerHTML = suppliers.map(sup => `
+                <div class="bg-gray-50 rounded-lg p-3 flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">${sup.name}</div>
+                        ${sup.phone ? `<div class="text-sm text-gray-500">${sup.phone}</div>` : ''}
+                        ${sup.notes ? `<div class="text-xs text-gray-400 mt-1">${sup.notes}</div>` : ''}
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editSupplier('${sup.id}')" class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
+                        <button onclick="deleteSupplier('${sup.id}')" class="text-red-500 hover:text-red-700 text-sm">Del</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addSupplier() {
+            const nameInput = document.getElementById('new-supplier-name');
+            const phoneInput = document.getElementById('new-supplier-phone');
+            const notesInput = document.getElementById('new-supplier-notes');
+            const name = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            const notes = notesInput.value.trim();
+
+            if (!name) return;
+
+            try {
+                const newSupplier = await api.createSupplier({
+                    name,
+                    phone: phone || null,
+                    notes: notes || null,
+                    location: currentLocation
+                });
+                suppliers.push(newSupplier);
+                renderSuppliers();
+                nameInput.value = '';
+                phoneInput.value = '';
+                notesInput.value = '';
+            } catch (error) {
+                console.error('Error creating supplier:', error);
+                alert('Error creating supplier: ' + (error.message || error));
+            }
+        }
+
+        async function editSupplier(supplierId) {
+            const supplier = suppliers.find(s => s.id === supplierId);
+            if (!supplier) return;
+
+            const name = prompt('Supplier name:', supplier.name);
+            if (name === null) return;
+            if (!name.trim()) {
+                alert('Name cannot be empty');
+                return;
+            }
+
+            const phone = prompt('Phone (for WhatsApp):', supplier.phone || '');
+            if (phone === null) return;
+
+            const notes = prompt('Notes:', supplier.notes || '');
+            if (notes === null) return;
+
+            try {
+                const updated = await api.updateSupplier(supplierId, {
+                    name: name.trim(),
+                    phone: phone.trim() || null,
+                    notes: notes.trim() || null
+                });
+                const index = suppliers.findIndex(s => s.id === supplierId);
+                if (index !== -1) {
+                    suppliers[index] = updated;
+                }
+                renderSuppliers();
+            } catch (error) {
+                console.error('Error updating supplier:', error);
+                alert('Error updating supplier');
+            }
+        }
+
+        async function deleteSupplier(supplierId) {
+            if (!confirm('Delete this supplier?')) return;
+
+            try {
+                await api.deleteSupplier(supplierId);
+                suppliers = suppliers.filter(s => s.id !== supplierId);
+                renderSuppliers();
+                // Also clear supplierId from any categories using this supplier
+                state.categories.forEach(cat => {
+                    if (cat.supplierId === supplierId) {
+                        cat.supplierId = null;
+                    }
+                });
+                saveState();
+                renderCategories();
+            } catch (error) {
+                console.error('Error deleting supplier:', error);
+                alert('Error deleting supplier');
+            }
+        }
+
+        function getSupplierById(supplierId) {
+            return suppliers.find(s => s.id === supplierId);
+        }
+
+        // =====================================================
+        // END SUPPLIERS SYSTEM
+        // =====================================================
+
+        // Category Functions
+        function toggleCategory(categoryId) {
+            const index = expandedCategories.indexOf(categoryId);
+            if (index === -1) {
+                expandedCategories.push(categoryId);
+            } else {
+                expandedCategories.splice(index, 1);
+            }
+            renderCategories();
+        }
+
+        function addCategory() {
+            const input = document.getElementById('new-category');
+            const name = input.value.trim();
+            if (!name) return;
+
+            state.categories.push({
+                id: Date.now(),
+                name: name,
+                products: []
+            });
+            input.value = '';
+            saveState();
+            renderCategories();
+        }
+
+        function deleteCategory(categoryId) {
+            if (!confirm('Delete this category and all its products?')) return;
+            state.categories = state.categories.filter(c => c.id !== categoryId);
+            saveState();
+            renderCategories();
+        }
+
+        function setCategorySupplier(categoryId, supplierId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+            category.supplierId = supplierId || null;
+            saveState();
+            renderCategories();
+        }
+
+        // Product Functions
+        function addProduct(categoryId) {
+            const input = document.getElementById(`product-input-${categoryId}`);
+            const name = input.value.trim();
+            if (!name) return;
+
+            const category = state.categories.find(c => c.id === categoryId);
+            category.products.push({
+                id: Date.now(),
+                name: name,
+                quantity: 0,
+                unit: 'item',
+                price: 0
+            });
+            input.value = '';
+            saveState();
+            renderCategories();
+        }
+
+        function setProductPrice(categoryId, productId, price) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            product.price = Math.max(0, parseFloat(price) || 0);
+            saveState();
+        }
+
+        function incrementQuantity(categoryId, productId, amount = 1) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            product.quantity += amount;
+            saveState();
+            renderCategories();
+        }
+
+        function decrementQuantity(categoryId, productId, amount = 1) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            product.quantity = Math.max(0, product.quantity - amount);
+            saveState();
+            renderCategories();
+        }
+
+        // Long press handlers for +/- buttons
+        let qtyLongPressTimer = null;
+        let qtyLongPressed = false;
+
+        function handleQtyTouchStart(e, categoryId, productId, isIncrement) {
+            qtyLongPressed = false;
+            qtyLongPressTimer = setTimeout(() => {
+                qtyLongPressed = true;
+                navigator.vibrate && navigator.vibrate(50);
+                if (isIncrement) {
+                    incrementQuantity(categoryId, productId, 5);
+                } else {
+                    decrementQuantity(categoryId, productId, 5);
+                }
+            }, 500);
+        }
+
+        function handleQtyTouchEnd(e, categoryId, productId, isIncrement) {
+            if (qtyLongPressTimer) {
+                clearTimeout(qtyLongPressTimer);
+                qtyLongPressTimer = null;
+            }
+            if (!qtyLongPressed) {
+                // Quick tap - add/remove 1
+                if (isIncrement) {
+                    incrementQuantity(categoryId, productId, 1);
+                } else {
+                    decrementQuantity(categoryId, productId, 1);
+                }
+            }
+            qtyLongPressed = false;
+        }
+
+        function getStockStatus(quantity) {
+            if (quantity === 0) return { label: 'OK', color: 'bg-green-100 text-green-700' };
+            return { label: 'Need ' + quantity, color: 'bg-red-100 text-red-700' };
+        }
+
+        function deleteProduct(categoryId, productId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            category.products = category.products.filter(p => p.id !== productId);
+            saveState();
+            renderCategories();
+        }
+
+        function resetCategory(categoryId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+            category.products.forEach(p => p.quantity = 0);
+            saveState();
+            renderCategories();
+        }
+
+        function toggleProductUnit(categoryId, productId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            const product = category.products.find(p => p.id === productId);
+            if (product) {
+                product.unit = product.unit === 'item' ? 'package' : 'item';
+                saveState();
+                renderCategories();
+            }
+        }
+
+        // Color Options for Task Lists
+        const taskListColors = {
+            blue: { bg: 'bg-blue-600', progress: 'bg-blue-800', text: 'text-blue-200' },
+            green: { bg: 'bg-green-600', progress: 'bg-green-800', text: 'text-green-200' },
+            red: { bg: 'bg-red-600', progress: 'bg-red-800', text: 'text-red-200' },
+            orange: { bg: 'bg-orange-500', progress: 'bg-orange-700', text: 'text-orange-200' },
+            purple: { bg: 'bg-purple-600', progress: 'bg-purple-800', text: 'text-purple-200' },
+            pink: { bg: 'bg-pink-500', progress: 'bg-pink-700', text: 'text-pink-200' },
+            teal: { bg: 'bg-teal-600', progress: 'bg-teal-800', text: 'text-teal-200' },
+            gray: { bg: 'bg-gray-600', progress: 'bg-gray-800', text: 'text-gray-300' }
+        };
+
+        // Task List Functions
+        function toggleTaskList(listId) {
+            const index = expandedTaskLists.indexOf(listId);
+            if (index === -1) {
+                expandedTaskLists.push(listId);
+            } else {
+                expandedTaskLists.splice(index, 1);
+            }
+            renderTaskLists();
+        }
+
+        function addTaskList() {
+            const input = document.getElementById('new-task-list');
+            const name = input.value.trim();
+            if (!name) return;
+
+            state.taskLists.push({
+                id: Date.now(),
+                name: name,
+                color: 'blue',
+                tasks: []
+            });
+            input.value = '';
+            saveState();
+            renderTaskLists();
+        }
+
+        function deleteTaskList(listId) {
+            if (!confirm('Delete this task list and all its tasks?')) return;
+            state.taskLists = state.taskLists.filter(l => l.id !== listId);
+            saveState();
+            renderTaskLists();
+        }
+
+        function changeTaskListColor(listId, color) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (taskList) {
+                taskList.color = color;
+                saveState();
+                renderTaskLists();
+            }
+        }
+
+        async function addTask(listId) {
+            const input = document.getElementById(`task-input-${listId}`);
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+
+            let finalText = text;
+            if (isGafarTaskList(listId) && !hasRussianTranslation(text)) {
+                const russian = await translateHebrewToRussian(text);
+                if (russian) {
+                    finalText = text + '\n' + russian;
+                }
+            }
+
+            const taskList = state.taskLists.find(l => l.id === listId);
+            taskList.tasks.push({
+                id: Date.now(),
+                text: finalText,
+                done: false
+            });
+            saveState();
+            renderTaskLists();
+        }
+
+        function toggleTask(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const task = taskList.tasks.find(t => t.id === taskId);
+            task.done = !task.done;
+            saveState();
+            renderTaskLists();
+        }
+
+        function deleteTask(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            taskList.tasks = taskList.tasks.filter(t => t.id !== taskId);
+            saveState();
+            renderTaskLists();
+        }
+
+        // Edit task text
+        async function editTask(listId, taskId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const task = taskList.tasks.find(t => t.id === taskId);
+            const hebrewLine = isGafarTaskList(listId) ? task.text.split('\n')[0] : task.text;
+            const newText = prompt('Edit task:', hebrewLine);
+            if (newText !== null && newText.trim()) {
+                let finalText = newText.trim();
+                if (isGafarTaskList(listId) && !hasRussianTranslation(finalText)) {
+                    const russian = await translateHebrewToRussian(finalText);
+                    if (russian) {
+                        finalText = finalText + '\n' + russian;
+                    }
+                }
+                task.text = finalText;
+                saveState();
+                renderTaskLists();
+            }
+        }
+
+        // Drag and drop reorder (desktop)
+        let draggedTask = null;
+        let draggedListId = null;
+
+        function handleDragStart(e, listId, taskId) {
+            draggedTask = taskId;
+            draggedListId = listId;
+            e.target.closest('.task-item').classList.add('opacity-50');
+        }
+
+        function handleDragEnd(e) {
+            e.target.closest('.task-item')?.classList.remove('opacity-50');
+            draggedTask = null;
+            draggedListId = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e, listId, targetTaskId) {
+            e.preventDefault();
+            if (draggedTask === null || draggedListId !== listId || draggedTask === targetTaskId) return;
+
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const fromIndex = taskList.tasks.findIndex(t => t.id === draggedTask);
+            const toIndex = taskList.tasks.findIndex(t => t.id === targetTaskId);
+
+            if (fromIndex !== -1 && toIndex !== -1) {
+                const [removed] = taskList.tasks.splice(fromIndex, 1);
+                taskList.tasks.splice(toIndex, 0, removed);
+                saveState();
+                renderTaskLists();
+            }
+        }
+
+        // Touch drag and drop (mobile)
+        let touchDragElement = null;
+        let touchDragListId = null;
+        let touchDragTaskId = null;
+        let touchStartY = 0;
+        let touchTimeout = null;
+        let isDragging = false;
+
+        let touchStartX = 0;
+
+        function initTouchDrag() {
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchmove', handleTouchMoveCheck, { passive: true });
+            document.addEventListener('touchend', handleTouchEnd, { passive: true });
+        }
+
+        // Check if user is scrolling (cancel drag)
+        function handleTouchMoveCheck(e) {
+            if (!touchTimeout) return;
+            if (!touchDragElement) return;
+
+            const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+            const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+
+            // If moved more than 10px, user is scrolling - cancel drag
+            if (moveX > 10 || moveY > 10) {
+                clearTimeout(touchTimeout);
+                touchTimeout = null;
+                touchDragElement = null;
+            }
+        }
+
+        function handleTouchStart(e) {
+            // Check if touch is on a task item
+            const taskItem = e.target.closest('.task-item');
+            if (!taskItem) return;
+
+            // Don't interfere with checkbox or delete button
+            if (e.target.closest('.task-checkbox') || e.target.closest('.task-delete')) {
+                return;
+            }
+
+            touchDragListId = parseInt(taskItem.dataset.listId);
+            touchDragTaskId = parseInt(taskItem.dataset.taskId);
+            touchDragElement = taskItem;
+            touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
+
+            // Start drag after holding for 500ms without moving
+            touchTimeout = setTimeout(() => {
+                isDragging = true;
+                taskItem.classList.add('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
+                navigator.vibrate && navigator.vibrate(100); // Longer vibration to confirm drag mode
+                // Now add the drag move listener
+                document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            }, 500);
+        }
+
+        function handleTouchMove(e) {
+            if (!isDragging || !touchDragTaskId) return;
+
+            e.preventDefault();
+
+            const touchY = e.touches[0].clientY;
+
+            // Find current dragged element (may have changed after re-render)
+            const currentElement = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
+            if (!currentElement) return;
+
+            const container = currentElement.closest('.task-list-container');
+            const taskItems = Array.from(container.querySelectorAll('.task-item'));
+
+            for (const item of taskItems) {
+                const itemTaskId = parseInt(item.dataset.taskId);
+                if (itemTaskId === touchDragTaskId) continue;
+
+                const rect = item.getBoundingClientRect();
+                const middle = rect.top + rect.height / 2;
+
+                // Check if finger is over this item
+                if (touchY > rect.top && touchY < rect.bottom) {
+                    const taskList = state.taskLists.find(l => l.id === touchDragListId);
+                    const fromIndex = taskList.tasks.findIndex(t => t.id === touchDragTaskId);
+                    const toIndex = taskList.tasks.findIndex(t => t.id === itemTaskId);
+
+                    // Only swap if moving in the right direction
+                    if ((fromIndex < toIndex && touchY > middle) || (fromIndex > toIndex && touchY < middle)) {
+                        reorderTasks(touchDragListId, touchDragTaskId, itemTaskId);
+                        // Re-highlight the dragged element after re-render
+                        setTimeout(() => {
+                            const newElement = document.querySelector(`.task-item[data-task-id="${touchDragTaskId}"][data-list-id="${touchDragListId}"]`);
+                            if (newElement) {
+                                newElement.classList.add('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
+                            }
+                        }, 0);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            const wasQuickTap = touchTimeout !== null; // Timer still running = quick tap
+            const listId = touchDragListId;
+            const taskId = touchDragTaskId;
+
+            // Clear the long-press timer
+            if (touchTimeout) {
+                clearTimeout(touchTimeout);
+                touchTimeout = null;
+            }
+
+            if (isDragging && taskId) {
+                // Was dragging - finish drag
+                const element = document.querySelector(`.task-item[data-task-id="${taskId}"][data-list-id="${listId}"]`);
+                if (element) {
+                    element.classList.remove('bg-blue-100', 'shadow-lg', 'z-50', 'border-l-4', 'border-blue-500');
+                }
+                document.removeEventListener('touchmove', handleTouchMove);
+                saveState();
+            } else if (wasQuickTap && taskId && listId) {
+                // Quick tap - open edit
+                editTask(listId, taskId);
+            }
+
+            touchDragElement = null;
+            touchDragListId = null;
+            touchDragTaskId = null;
+            isDragging = false;
+        }
+
+        function reorderTasks(listId, fromTaskId, toTaskId) {
+            if (fromTaskId === toTaskId) return;
+
+            const taskList = state.taskLists.find(l => l.id === listId);
+            const fromIndex = taskList.tasks.findIndex(t => t.id === fromTaskId);
+            const toIndex = taskList.tasks.findIndex(t => t.id === toTaskId);
+
+            if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+                const [removed] = taskList.tasks.splice(fromIndex, 1);
+                taskList.tasks.splice(toIndex, 0, removed);
+                renderTaskLists();
+            }
+        }
+
+        // =====================================================
+        // TASK LIST (CATEGORY) DRAG AND DROP
+        // =====================================================
+
+        let taskListDragId = null;
+        let taskListDragElement = null;
+        let taskListDragTimeout = null;
+        let isTaskListDragging = false;
+        let taskListStartY = 0;
+
+        function initTaskListTouchDrag() {
+            document.addEventListener('touchstart', handleTaskListTouchStart, { passive: true });
+            document.addEventListener('touchend', handleTaskListTouchEnd, { passive: true });
+            document.addEventListener('touchmove', handleTaskListTouchMoveCheck, { passive: true });
+        }
+
+        function handleTaskListTouchMoveCheck(e) {
+            if (taskListDragTimeout && !isTaskListDragging) {
+                const touch = e.touches[0];
+                const deltaY = Math.abs(touch.clientY - taskListStartY);
+                if (deltaY > 10) {
+                    clearTimeout(taskListDragTimeout);
+                    taskListDragTimeout = null;
+                }
+            }
+        }
+
+        function handleTaskListTouchStart(e) {
+            const header = e.target.closest('.tasklist-header');
+            if (!header) return;
+
+            // Don't start drag if touching delete button
+            if (e.target.closest('button')) return;
+
+            taskListDragId = parseInt(header.dataset.tasklistId);
+            taskListDragElement = header.closest('.tasklist-item');
+            taskListStartY = e.touches[0].clientY;
+
+            taskListDragTimeout = setTimeout(() => {
+                isTaskListDragging = true;
+                taskListDragElement.classList.add('ring-4', 'ring-blue-500', 'shadow-xl', 'z-50');
+                navigator.vibrate && navigator.vibrate(100);
+                document.addEventListener('touchmove', handleTaskListTouchMove, { passive: false });
+            }, 500);
+        }
+
+        function handleTaskListTouchMove(e) {
+            if (!isTaskListDragging || !taskListDragId) return;
+            e.preventDefault();
+
+            const touchY = e.touches[0].clientY;
+            const taskListItems = Array.from(document.querySelectorAll('.tasklist-item'));
+
+            for (const item of taskListItems) {
+                const itemId = parseInt(item.dataset.tasklistId);
+                if (itemId === taskListDragId) continue;
+
+                const rect = item.getBoundingClientRect();
+                const middle = rect.top + rect.height / 2;
+
+                if (touchY > rect.top && touchY < rect.bottom) {
+                    const fromIndex = state.taskLists.findIndex(l => l.id === taskListDragId);
+                    const toIndex = state.taskLists.findIndex(l => l.id === itemId);
+
+                    if ((fromIndex < toIndex && touchY > middle) || (fromIndex > toIndex && touchY < middle)) {
+                        reorderTaskLists(taskListDragId, itemId);
+                        setTimeout(() => {
+                            const newElement = document.querySelector(`.tasklist-item[data-tasklist-id="${taskListDragId}"]`);
+                            if (newElement) {
+                                newElement.classList.add('ring-4', 'ring-blue-500', 'shadow-xl', 'z-50');
+                                taskListDragElement = newElement;
+                            }
+                        }, 0);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function handleTaskListTouchEnd(e) {
+            clearTimeout(taskListDragTimeout);
+            taskListDragTimeout = null;
+
+            if (isTaskListDragging) {
+                document.removeEventListener('touchmove', handleTaskListTouchMove);
+                if (taskListDragElement) {
+                    taskListDragElement.classList.remove('ring-4', 'ring-blue-500', 'shadow-xl', 'z-50');
+                }
+                saveState();
+            }
+
+            isTaskListDragging = false;
+            taskListDragId = null;
+            taskListDragElement = null;
+        }
+
+        function reorderTaskLists(fromId, toId) {
+            if (fromId === toId) return;
+
+            const fromIndex = state.taskLists.findIndex(l => l.id === fromId);
+            const toIndex = state.taskLists.findIndex(l => l.id === toId);
+
+            if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+                const [removed] = state.taskLists.splice(fromIndex, 1);
+                state.taskLists.splice(toIndex, 0, removed);
+                renderTaskLists();
+            }
+        }
+
+        // =====================================================
+        // END TASK LIST DRAG AND DROP
+        // =====================================================
+
+        function resetAllTasks(listId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (taskList) {
+                taskList.tasks.forEach(t => t.done = false);
+                saveState();
+                renderTaskLists();
+            }
+        }
+
+        function getTaskListProgress(taskList) {
+            if (taskList.tasks.length === 0) return { completed: 0, total: 0, percent: 0 };
+            const completed = taskList.tasks.filter(t => t.done).length;
+            return {
+                completed,
+                total: taskList.tasks.length,
+                percent: Math.round((completed / taskList.tasks.length) * 100)
+            };
+        }
+
+        // Order Generation
+        function generateOrder() {
+            const itemsToOrder = [];
+            state.categories.forEach(category => {
+                const needOrder = category.products.filter(p => p.quantity > 0);
+                if (needOrder.length > 0) {
+                    itemsToOrder.push({
+                        category: category.name,
+                        items: needOrder.map(p => ({
+                            name: p.name,
+                            quantity: p.quantity,
+                            unit: p.unit || 'item'
+                        }))
+                    });
+                }
+            });
+
+            if (itemsToOrder.length === 0) {
+                alert('No items to order! All inventory is OK.');
+                return;
+            }
+
+            let orderText = `ORDER LIST\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
+            itemsToOrder.forEach(group => {
+                orderText += `${group.category.toUpperCase()}\n`;
+                group.items.forEach(item => {
+                    const unitLabel = item.unit === 'package' ? 'pkg' : 'item';
+                    orderText += `  - ${item.name} x${item.quantity} (${unitLabel})\n`;
+                });
+                orderText += '\n';
+            });
+
+            document.getElementById('order-text').textContent = orderText;
+            document.getElementById('order-modal').classList.remove('hidden');
+        }
+
+        function generateCategoryOrder(categoryId) {
+            const category = state.categories.find(c => c.id === categoryId);
+            if (!category) return;
+
+            const needOrder = category.products.filter(p => p.quantity > 0);
+            if (needOrder.length === 0) {
+                alert(`No items to order from ${category.name}!`);
+                return;
+            }
+
+            // Store current order context for tracking (with prices)
+            currentOrderCategory = {
+                id: category.id,
+                name: category.name,
+                supplierId: category.supplierId,
+                supplier: category.supplierId ? getSupplierById(category.supplierId) : null,
+                items: needOrder.map(p => ({
+                    name: p.name,
+                    quantity: p.quantity,
+                    unit: p.unit || 'item',
+                    price: p.price || 0,
+                    total: (p.quantity || 0) * (p.price || 0)
+                }))
+            };
+
+            // Calculate order total
+            const orderTotal = currentOrderCategory.items.reduce((sum, item) => sum + item.total, 0);
+
+            let orderText = `ORDER LIST - ${category.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
+            needOrder.forEach(item => {
+                const unitLabel = (item.unit || 'item') === 'package' ? 'pkg' : 'item';
+                const price = item.price || 0;
+                const itemTotal = item.quantity * price;
+                if (price > 0) {
+                    orderText += `  - ${item.name} x${item.quantity} (${unitLabel}) @ ₪${price} = ₪${itemTotal.toFixed(2)}\n`;
+                } else {
+                    orderText += `  - ${item.name} x${item.quantity} (${unitLabel})\n`;
+                }
+            });
+
+            if (orderTotal > 0) {
+                orderText += `\n${'─'.repeat(20)}\nTotal: ₪${orderTotal.toFixed(2)}\n`;
+            }
+
+            document.getElementById('order-text').textContent = orderText;
+            document.getElementById('order-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('order-modal').classList.add('hidden');
+            currentOrderCategory = null;
+        }
+
+        function copyOrder() {
+            const text = document.getElementById('order-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Order list copied to clipboard!');
+            });
+        }
+
+        async function shareViaWhatsApp() {
+            const orderText = document.getElementById('order-text').textContent;
+            const text = encodeURIComponent(orderText);
+
+            // Get supplier phone if category has one assigned
+            let supplierPhone = null;
+            if (currentOrderCategory?.supplier?.phone) {
+                // Convert to international format if needed
+                supplierPhone = currentOrderCategory.supplier.phone.replace(/^0/, '+972').replace(/[^+\d]/g, '');
+            }
+
+            // Open WhatsApp FIRST (must be in direct user gesture to avoid popup blocking)
+            if (supplierPhone) {
+                window.open(`https://wa.me/${supplierPhone}?text=${text}`, '_blank');
+            } else {
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+            }
+
+            // Save order to history (fire-and-forget, don't await to avoid blocking)
+            if (currentOrderCategory) {
+                api.createOrder({
+                    supplierId: currentOrderCategory.supplierId,
+                    supplierName: currentOrderCategory.supplier?.name || null,
+                    categoryId: currentOrderCategory.id,
+                    categoryName: currentOrderCategory.name,
+                    items: currentOrderCategory.items,
+                    orderText: orderText,
+                    location: currentLocation,
+                    sharedVia: 'whatsapp'
+                }).catch(error => console.error('Error saving order:', error));
+            }
+        }
+
+        function shareViaEmail() {
+            const text = encodeURIComponent(document.getElementById('order-text').textContent);
+            const subject = encodeURIComponent(`Order List - ${new Date().toLocaleDateString()}`);
+            window.open(`mailto:?subject=${subject}&body=${text}`, '_blank');
+        }
+
+        // Task Sharing
+        function shareTaskList(listId) {
+            const taskList = state.taskLists.find(l => l.id === listId);
+            if (!taskList || taskList.tasks.length === 0) {
+                alert('No tasks to share in this list!');
+                return;
+            }
+
+            const progress = getTaskListProgress(taskList);
+            let taskText = `${taskList.name.toUpperCase()}\n${new Date().toLocaleDateString()}\n${'─'.repeat(20)}\n\n`;
+            taskList.tasks.forEach(task => {
+                const status = task.done ? '[✓]' : '[ ]';
+                taskText += `\u200E${status} ${task.text}\n`;
+            });
+
+            taskText += `\n\u200EProgress: ${progress.completed}/${progress.total} completed (${progress.percent}%)`;
+
+            document.getElementById('share-text').textContent = taskText;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function shareAllTasks() {
+            if (state.taskLists.length === 0) {
+                alert('No task lists to share!');
+                return;
+            }
+
+            // Show selection modal with checkboxes for each task list
+            const container = document.getElementById('task-list-checkboxes');
+            container.innerHTML = state.taskLists.map(taskList => {
+                const progress = getTaskListProgress(taskList);
+                return `
+                    <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                        <input type="checkbox" id="share-list-${taskList.id}" value="${taskList.id}" checked
+                               class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500">
+                        <div class="flex-1">
+                            <div class="font-medium">${taskList.name}</div>
+                            <div class="text-sm text-gray-500">${progress.total} tasks (${progress.completed} done)</div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+
+            document.getElementById('select-tasks-modal').classList.remove('hidden');
+        }
+
+        function closeSelectModal() {
+            document.getElementById('select-tasks-modal').classList.add('hidden');
+        }
+
+        function shareSelectedTasks() {
+            // Get selected task list IDs
+            const checkboxes = document.querySelectorAll('#task-list-checkboxes input[type="checkbox"]:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (selectedIds.length === 0) {
+                alert('Please select at least one task list to share!');
+                return;
+            }
+
+            const selectedLists = state.taskLists.filter(l => selectedIds.includes(l.id));
+
+            let taskText = `DAILY TASKS\n${new Date().toLocaleDateString()}\n${'═'.repeat(25)}\n`;
+
+            selectedLists.forEach(taskList => {
+                const progress = getTaskListProgress(taskList);
+                taskText += `\n${taskList.name.toUpperCase()}\n${'─'.repeat(20)}\n`;
+                if (taskList.tasks.length === 0) {
+                    taskText += `  (No tasks)\n`;
+                } else {
+                    taskList.tasks.forEach(task => {
+                        const status = task.done ? '[✓]' : '[ ]';
+                        taskText += `\u200E${status} ${task.text}\n`;
+                    });
+                    taskText += `\u200EProgress: ${progress.completed}/${progress.total} (${progress.percent}%)\n`;
+                }
+            });
+
+            closeSelectModal();
+            document.getElementById('share-text').textContent = taskText;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+            document.getElementById('share-note').value = '';
+        }
+
+        function getShareTextWithNote() {
+            const note = document.getElementById('share-note').value.trim();
+            const taskText = document.getElementById('share-text').textContent;
+            return note ? `${note}\n\n${taskText}` : taskText;
+        }
+
+        function copyTaskList() {
+            const text = getShareTextWithNote();
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Task list copied to clipboard!');
+            });
+        }
+
+        function shareTasksWhatsApp() {
+            const text = encodeURIComponent(getShareTextWithNote());
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function shareTasksEmail() {
+            const text = encodeURIComponent(getShareTextWithNote());
+            const subject = encodeURIComponent(`Daily Tasks - ${new Date().toLocaleDateString()}`);
+            window.open(`mailto:?subject=${subject}&body=${text}`, '_blank');
+        }
+
+        // Render Functions
+        function renderCategories() {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = state.categories.map(category => {
+                const isExpanded = expandedCategories.includes(category.id);
+                const itemsNeedingOrder = category.products.filter(p => p.quantity > 0).length;
+                const assignedSupplier = category.supplierId ? getSupplierById(category.supplierId) : null;
+                const supplierOptions = suppliers.map(s =>
+                    `<option value="${s.id}" ${category.supplierId === s.id ? 'selected' : ''}>${s.name}</option>`
+                ).join('');
+                return `
+                <div class="bg-white rounded-lg shadow mb-3" style="max-width: 100%; overflow: hidden;">
+                    <div class="bg-gray-800 text-white px-2 py-2 flex justify-between items-center cursor-pointer" dir="rtl" onclick="toggleCategory(${category.id})">
+                        <div class="flex items-center gap-1">
+                            <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&gt;</span>
+                            <h3 class="font-bold text-sm">${category.name}</h3>
+                            ${itemsNeedingOrder > 0 ? `<span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">${itemsNeedingOrder}</span>` : ''}
+                            ${assignedSupplier ? `<span class="bg-indigo-500 text-white text-xs px-1.5 py-0.5 rounded-full">${assignedSupplier.name}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                            <button onclick="resetCategory(${category.id})" class="text-green-300 hover:text-green-100 text-xs">
+                                Reset
+                            </button>
+                            <button onclick="generateCategoryOrder(${category.id})" class="text-amber-300 hover:text-amber-100 text-xs">
+                                Order
+                            </button>
+                            <button onclick="deleteCategory(${category.id})" class="text-red-300 hover:text-red-100 text-xs">
+                                Del
+                            </button>
+                        </div>
+                    </div>
+                    <div class="${isExpanded ? '' : 'hidden'} p-2" style="max-width: 100%; overflow: hidden;">
+                        <!-- Supplier Assignment -->
+                        <div class="flex items-center gap-2 mb-2 pb-2 border-b">
+                            <label class="text-xs text-gray-500">Supplier:</label>
+                            <select onchange="setCategorySupplier(${category.id}, this.value)"
+                                    class="flex-1 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <option value="">-- None --</option>
+                                ${supplierOptions}
+                            </select>
+                        </div>
+                        <div class="flex gap-1 mb-2" style="max-width: 100%;">
+                            <input type="text" id="product-input-${category.id}" placeholder="Add product..."
+                                   class="flex-1 min-w-0 px-2 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                   onkeypress="if(event.key==='Enter')addProduct(${category.id})">
+                            <button onclick="addProduct(${category.id})" class="bg-gray-200 px-3 py-2 rounded-lg text-sm hover:bg-gray-300 flex-shrink-0">
+                                +
+                            </button>
+                        </div>
+                        <div class="divide-y">
+                            ${category.products.map(product => {
+                                const status = getStockStatus(product.quantity);
+                                const needsOrder = product.quantity > 0;
+                                const unit = product.unit || 'item';
+                                const unitLabel = unit === 'package' ? 'pkg' : 'item';
+                                return `
+                                <div class="product-row flex items-center justify-between py-2 gap-2" dir="rtl">
+                                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                                        <span class="product-name ${needsOrder ? 'text-red-500 font-medium' : ''} truncate">${product.name}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="toggleProductUnit(${category.id}, ${product.id})"
+                                                class="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200">
+                                            ${unitLabel}
+                                        </button>
+                                        <div class="flex items-center">
+                                            <button ontouchstart="handleQtyTouchStart(event, ${category.id}, ${product.id}, false)"
+                                                    ontouchend="handleQtyTouchEnd(event, ${category.id}, ${product.id}, false)"
+                                                    onclick="return false"
+                                                    class="qty-btn w-8 h-8 rounded-l-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                                -
+                                            </button>
+                                            <span class="w-10 h-8 flex items-center justify-center bg-gray-100 font-medium text-sm">
+                                                ${product.quantity}
+                                            </span>
+                                            <button ontouchstart="handleQtyTouchStart(event, ${category.id}, ${product.id}, true)"
+                                                    ontouchend="handleQtyTouchEnd(event, ${category.id}, ${product.id}, true)"
+                                                    onclick="return false"
+                                                    class="qty-btn w-8 h-8 rounded-r-lg bg-gray-200 hover:bg-gray-300 font-bold text-lg">
+                                                +
+                                            </button>
+                                        </div>
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium ${status.color}">
+                                            ${status.label}
+                                        </span>
+                                        <button onclick="deleteProduct(${category.id}, ${product.id})"
+                                                class="text-gray-400 hover:text-red-500 text-lg">
+                                            &times;
+                                        </button>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                            ${category.products.length === 0 ? '<p class="text-gray-400 text-sm py-2">No products yet</p>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderTaskLists() {
+            const container = document.getElementById('task-lists-container');
+            if (state.taskLists.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8 bg-white rounded-lg shadow">No task lists yet. Create your first one above!</p>';
+                return;
+            }
+
+            container.innerHTML = state.taskLists.map(taskList => {
+                const progress = getTaskListProgress(taskList);
+                const isExpanded = expandedTaskLists.includes(taskList.id);
+                const color = taskListColors[taskList.color] || taskListColors.blue;
+                const colorPickerHtml = Object.keys(taskListColors).map(c =>
+                    `<button onclick="changeTaskListColor(${taskList.id}, '${c}')"
+                             class="w-5 h-5 rounded-full ${taskListColors[c].bg} ${taskList.color === c ? 'ring-2 ring-white ring-offset-1' : 'opacity-70 hover:opacity-100'}"
+                             title="${c}"></button>`
+                ).join('');
+                return `
+                <div class="bg-white rounded-lg shadow mb-4 overflow-hidden tasklist-item" data-tasklist-id="${taskList.id}">
+                    <div class="tasklist-header ${color.bg} text-white px-4 py-3 cursor-pointer" data-tasklist-id="${taskList.id}" onclick="toggleTaskList(${taskList.id})">
+                        <div class="flex justify-between items-center" dir="rtl">
+                            <div class="flex items-center gap-2">
+                                <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">&lt;</span>
+                                <h3 class="font-bold">${taskList.name}</h3>
+                            </div>
+                            <div class="flex items-center gap-3" onclick="event.stopPropagation()">
+                                <span class="${color.text} text-sm">${progress.completed}/${progress.total}</span>
+                                <button onclick="deleteTaskList(${taskList.id})" class="text-red-300 hover:text-red-100 text-sm">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                        ${progress.total > 0 ? `
+                        <div class="mt-2 ${color.progress} rounded-full h-2">
+                            <div class="bg-white rounded-full h-2 transition-all" style="width: ${progress.percent}%"></div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="${isExpanded ? '' : 'hidden'} p-3">
+                        <!-- Color Picker -->
+                        <div class="flex items-center gap-2 mb-3 pb-3 border-b">
+                            <span class="text-xs text-gray-500">Color:</span>
+                            <div class="flex gap-1">${colorPickerHtml}</div>
+                        </div>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="task-input-${taskList.id}" placeholder="Add task..."
+                                   class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   onkeypress="if(event.key==='Enter')addTask(${taskList.id})">
+                            <button onclick="addTask(${taskList.id})" class="bg-gray-200 px-3 py-2 rounded-lg text-sm hover:bg-gray-300">
+                                +
+                            </button>
+                        </div>
+                        <div class="divide-y task-list-container" data-list-id="${taskList.id}">
+                            ${taskList.tasks.map((task, index) => `
+                                <div class="task-item flex items-center gap-3 py-3 ${task.done ? 'opacity-60' : ''}"
+                                     dir="rtl"
+                                     data-task-id="${task.id}"
+                                     data-list-id="${taskList.id}">
+                                    <input type="checkbox" ${task.done ? 'checked' : ''}
+                                           onchange="toggleTask(${taskList.id}, ${task.id})"
+                                           class="task-checkbox w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer">
+                                    <span class="task-text flex-1 text-right ${task.done ? 'line-through text-gray-400' : ''}">${task.text.replace(/\n/g, '<br>')}</span>
+                                    <button onclick="deleteTask(${taskList.id}, ${task.id})" class="task-delete text-gray-400 hover:text-red-500 text-lg px-2">
+                                        &times;
+                                    </button>
+                                </div>
+                            `).join('')}
+                            ${taskList.tasks.length === 0 ? '<p class="text-gray-400 text-sm py-2">No tasks yet</p>' : ''}
+                        </div>
+                        ${taskList.tasks.length > 0 ? `
+                        <div class="flex gap-2 mt-3 pt-3 border-t">
+                            <button onclick="resetAllTasks(${taskList.id})" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-200">
+                                Reset All
+                            </button>
+                            <button onclick="shareTaskList(${taskList.id})" class="flex-1 bg-emerald-100 text-emerald-700 py-2 rounded-lg text-sm hover:bg-emerald-200">
+                                Share
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderAll() {
+            renderCategories();
+            renderTaskLists();
+        }
+
+        // Handle Enter key for inputs
+        document.getElementById('new-category').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addCategory();
+        });
+
+        document.getElementById('new-task-list').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTaskList();
+        });
+
+        // Close modals on backdrop click
+        document.getElementById('order-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'order-modal') closeModal();
+        });
+
+        document.getElementById('select-tasks-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'select-tasks-modal') closeSelectModal();
+        });
+
+        document.getElementById('share-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'share-modal') closeShareModal();
+        });
+
+        // =====================================================
+        // SCHEDULE SYSTEM
+        // =====================================================
+
+        // Schedule Configuration
+        const scheduleDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const scheduleDayLabelsHe = {
+            sunday: 'ראשון', monday: 'שני', tuesday: 'שלישי',
+            wednesday: 'רביעי', thursday: 'חמישי', friday: 'שישי', saturday: 'שבת'
+        };
+        const scheduleShifts = ['morning', 'afternoon', 'evening'];
+        const scheduleShiftLabelsHe = { morning: 'בוקר', afternoon: 'צהריים', evening: 'ערב' };
+        const scheduleLocations = ['isgav', 'frankfurt'];
+
+        // Default shift hours
+        const scheduleDefaultShiftHours = {
+            morning: { start: '06:30', end: '12:30' },
+            afternoon: { start: '12:30', end: '16:30' },
+            evening: { start: '16:30', end: '20:30' }
+        };
+
+        // Default availability for full-time employees (by name)
+        const scheduleDefaultAvailability = {
+            'לוטם אלישב': {
+                days: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+                shifts: ['morning', 'afternoon', 'evening']
+            },
+            'יהונתן שמאי': {
+                days: ['sunday', 'monday', 'thursday'],
+                shifts: ['morning']
+            },
+            'לירן רייטר': {
+                days: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+                shifts: ['morning', 'afternoon', 'evening']
+            }
+        };
+
+        // Schedule State
+        let scheduleCurrentWeekStart = null;
+        let scheduleEmployees = [];
+        let scheduleWeekData = null;
+        let scheduleFinalSchedule = {};
+        let scheduleShiftHours = { ...scheduleDefaultShiftHours };
+        let scheduleInitialized = false;
+
+        function scheduleGetWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day;
+            return new Date(d.setDate(diff));
+        }
+
+        function scheduleFormatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function scheduleGetWeekId() {
+            return scheduleFormatDate(scheduleCurrentWeekStart);
+        }
+
+        function scheduleFormatTime(time) {
+            if (!time) return '';
+            const [h, m] = time.split(':');
+            return `${parseInt(h)}:${m}`;
+        }
+
+        // Initialize final schedule structure
+        function scheduleInitFinalSchedule() {
+            scheduleFinalSchedule = {};
+            scheduleDays.forEach(day => {
+                scheduleFinalSchedule[day] = {};
+                scheduleShifts.forEach(shift => {
+                    scheduleFinalSchedule[day][shift] = { isgav: [], frankfurt: [] };
+                });
+            });
+        }
+
+        // Schedule sub-tab navigation
+        function scheduleShowSubTab(tabName) {
+            document.querySelectorAll('.schedule-subcontent').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="schedule-subtab-"]').forEach(el => {
+                el.classList.remove('schedule-subtab-active');
+                el.classList.add('text-gray-500');
+            });
+
+            document.getElementById(`schedule-content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`schedule-subtab-${tabName}`).classList.add('schedule-subtab-active');
+            document.getElementById(`schedule-subtab-${tabName}`).classList.remove('text-gray-500');
+
+            if (tabName === 'availability') scheduleRenderAvailabilityTable();
+            if (tabName === 'builder') scheduleRenderScheduleBuilder();
+        }
+
+        // Load employees and shift hours
+        async function scheduleLoadEmployees() {
+            try {
+                const data = await api.getScheduleConfig();
+                scheduleEmployees = data.employees || [];
+                if (data.shiftHours) {
+                    scheduleShiftHours = data.shiftHours;
+                    scheduleUpdateShiftHoursInputs();
+                }
+                scheduleRenderEmployeeList();
+            } catch (error) {
+                console.error('Error loading employees:', error);
+                scheduleEmployees = [];
+                scheduleRenderEmployeeList();
+            }
+        }
+
+        function scheduleUpdateShiftHoursInputs() {
+            document.getElementById('schedule-hours-morning-start').value = scheduleShiftHours.morning.start;
+            document.getElementById('schedule-hours-morning-end').value = scheduleShiftHours.morning.end;
+            document.getElementById('schedule-hours-afternoon-start').value = scheduleShiftHours.afternoon.start;
+            document.getElementById('schedule-hours-afternoon-end').value = scheduleShiftHours.afternoon.end;
+            document.getElementById('schedule-hours-evening-start').value = scheduleShiftHours.evening.start;
+            document.getElementById('schedule-hours-evening-end').value = scheduleShiftHours.evening.end;
+        }
+
+        async function scheduleSaveEmployees() {
+            try {
+                await api.saveScheduleConfig({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
+            } catch (error) {
+                console.error('Error saving employees:', error);
+            }
+        }
+
+        async function scheduleSaveShiftHours() {
+            scheduleShiftHours = {
+                morning: { start: document.getElementById('schedule-hours-morning-start').value, end: document.getElementById('schedule-hours-morning-end').value },
+                afternoon: { start: document.getElementById('schedule-hours-afternoon-start').value, end: document.getElementById('schedule-hours-afternoon-end').value },
+                evening: { start: document.getElementById('schedule-hours-evening-start').value, end: document.getElementById('schedule-hours-evening-end').value }
+            };
+            try {
+                await api.saveScheduleConfig({ employees: scheduleEmployees, shiftHours: scheduleShiftHours });
+                scheduleShowStatus('Shift hours saved!', 'success');
+            } catch (error) {
+                scheduleShowStatus('Error saving shift hours', 'error');
+            }
+        }
+
+        async function scheduleAddEmployee() {
+            const nameInput = document.getElementById('schedule-new-employee-name');
+            const phoneInput = document.getElementById('schedule-new-employee-phone');
+            const name = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            if (!name) return;
+
+            scheduleEmployees.push({ id: Date.now(), name, phone });
+            await scheduleSaveEmployees();
+            scheduleRenderEmployeeList();
+            nameInput.value = '';
+            phoneInput.value = '';
+        }
+
+        async function scheduleDeleteEmployee(id) {
+            if (!confirm('Delete this employee?')) return;
+            scheduleEmployees = scheduleEmployees.filter(e => e.id !== id);
+            await scheduleSaveEmployees();
+            scheduleRenderEmployeeList();
+        }
+
+        function scheduleRenderEmployeeList() {
+            const container = document.getElementById('schedule-employee-list');
+            if (scheduleEmployees.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">No employees yet.</p>';
+                return;
+            }
+            container.innerHTML = scheduleEmployees.map(emp => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <span class="font-medium">${emp.name}</span>
+                        <span class="text-gray-500 text-sm mr-2">${emp.phone || 'No phone'}</span>
+                    </div>
+                    <button onclick="scheduleDeleteEmployee(${emp.id})" class="text-red-500 hover:text-red-700">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        async function scheduleLoadWeekData() {
+            try {
+                const weekId = scheduleGetWeekId();
+                const data = await api.getScheduleWeek(weekId);
+                if (data && (data.availability || data.finalSchedule)) {
+                    scheduleWeekData = data;
+                    if (scheduleWeekData.finalSchedule) {
+                        scheduleFinalSchedule = scheduleMigrateFinalSchedule(scheduleWeekData.finalSchedule);
+                    } else {
+                        scheduleInitFinalSchedule();
+                    }
+                } else {
+                    scheduleWeekData = { availability: {} };
+                    scheduleInitFinalSchedule();
+                }
+            } catch (error) {
+                scheduleWeekData = { availability: {} };
+                scheduleInitFinalSchedule();
+            }
+            // Apply default availability for full-time employees (display only, not saved)
+            scheduleApplyDefaults();
+        }
+
+        // Migrate old finalSchedule format (array of IDs) to new format (array of objects)
+        function scheduleMigrateFinalSchedule(schedule) {
+            const migrated = {};
+            for (const day of Object.keys(schedule)) {
+                migrated[day] = {};
+                for (const shift of Object.keys(schedule[day])) {
+                    migrated[day][shift] = {};
+                    for (const loc of Object.keys(schedule[day][shift])) {
+                        const arr = schedule[day][shift][loc] || [];
+                        migrated[day][shift][loc] = arr.map(item => {
+                            // If already an object with id, keep it
+                            if (typeof item === 'object' && item.id !== undefined) {
+                                return item;
+                            }
+                            // Otherwise it's a plain ID - convert to object
+                            return { id: item, customHours: null };
+                        });
+                    }
+                }
+            }
+            return migrated;
+        }
+
+        // Apply default availability for employees who haven't submitted yet
+        function scheduleApplyDefaults() {
+            if (!scheduleWeekData) return;
+            scheduleWeekData.availability = scheduleWeekData.availability || {};
+
+            scheduleEmployees.forEach(emp => {
+                // Check if employee has default availability configured (by name)
+                const defaultConfig = scheduleDefaultAvailability[emp.name];
+                if (!defaultConfig) return;
+
+                // Only apply if employee hasn't submitted availability for this week
+                if (scheduleWeekData.availability[emp.id]) return;
+
+                // Build default availability object
+                const empAvailability = {};
+                scheduleDays.forEach(day => {
+                    empAvailability[day] = {};
+                    scheduleShifts.forEach(shift => {
+                        const isAvailable = defaultConfig.days.includes(day) && defaultConfig.shifts.includes(shift);
+                        empAvailability[day][shift] = { available: isAvailable, customHours: null };
+                    });
+                });
+
+                // Apply defaults (display only)
+                scheduleWeekData.availability[emp.id] = empAvailability;
+            });
+        }
+
+        // Get employee availability info
+        function scheduleGetEmployeeAvailability(empId, day, shift) {
+            const avail = scheduleWeekData?.availability?.[empId]?.[day]?.[shift];
+            if (!avail) return { available: false, customHours: null, submitted: !!scheduleWeekData?.availability?.[empId] };
+
+            // Handle both old (boolean) and new (object) format
+            if (typeof avail === 'boolean') {
+                return { available: avail, customHours: null, submitted: true };
+            }
+            return { available: avail.available, customHours: avail.customHours, submitted: true };
+        }
+
+        // Render availability table with hours in header
+        function scheduleRenderAvailabilityTable() {
+            const table = document.getElementById('schedule-availability-table');
+            const availability = scheduleWeekData?.availability || {};
+
+            // Build header with hours
+            let html = `
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-2 text-right font-bold">Day</th>
+                        ${scheduleShifts.map(shift => `
+                            <th class="p-2 text-center">
+                                <div class="font-bold">${scheduleShiftLabelsHe[shift]}</div>
+                                <div class="text-xs text-gray-500 font-normal">${scheduleFormatTime(scheduleShiftHours[shift].start)} - ${scheduleFormatTime(scheduleShiftHours[shift].end)}</div>
+                            </th>
+                        `).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            // Build rows
+            scheduleDays.forEach(day => {
+                html += `<tr class="border-t">
+                    <td class="p-2 font-medium bg-gray-50">${scheduleDayLabelsHe[day]}</td>`;
+
+                scheduleShifts.forEach(shift => {
+                    html += `<td class="p-2 shift-cell">`;
+
+                    scheduleEmployees.forEach(emp => {
+                        const info = scheduleGetEmployeeAvailability(emp.id, day, shift);
+
+                        if (!info.submitted) {
+                            html += `<span class="employee-chip chip-not-submitted">${emp.name}?</span>`;
+                        } else if (info.available) {
+                            if (info.customHours) {
+                                html += `<span class="employee-chip chip-partial" title="${scheduleFormatTime(info.customHours.start)}-${scheduleFormatTime(info.customHours.end)}">
+                                    ${emp.name}
+                                    <span class="text-[10px]">(${scheduleFormatTime(info.customHours.start)}-${scheduleFormatTime(info.customHours.end)})</span>
+                                </span>`;
+                            } else {
+                                html += `<span class="employee-chip chip-available">${emp.name}</span>`;
+                            }
+                        } else {
+                            html += `<span class="employee-chip chip-not-available">${emp.name}</span>`;
+                        }
+                    });
+
+                    html += `</td>`;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody>`;
+            table.innerHTML = html;
+
+            // Render employee notes section
+            scheduleRenderEmployeeNotes();
+        }
+
+        // Render employee notes section
+        function scheduleRenderEmployeeNotes() {
+            const notesContainer = document.getElementById('schedule-employee-notes');
+            const notesList = document.getElementById('schedule-notes-list');
+            const availability = scheduleWeekData?.availability || {};
+
+            // Collect employees with notes
+            const employeesWithNotes = [];
+            scheduleEmployees.forEach(emp => {
+                const empAvail = availability[emp.id];
+                if (empAvail && empAvail.note) {
+                    employeesWithNotes.push({ name: emp.name, note: empAvail.note });
+                }
+            });
+
+            if (employeesWithNotes.length === 0) {
+                notesContainer.classList.add('hidden');
+                return;
+            }
+
+            notesContainer.classList.remove('hidden');
+            notesList.innerHTML = employeesWithNotes.map(e => `
+                <div class="flex items-start gap-2 bg-white rounded-lg p-2">
+                    <span class="font-medium text-gray-800">${e.name}:</span>
+                    <span class="text-gray-600">"${e.note}"</span>
+                </div>
+            `).join('');
+        }
+
+        // ===== V1 whole-week schedule builder =====
+        // 20-color employee palette (top-level copy; print's own copy stays untouched)
+        const V1_EMP_COLORS = ['#FFB3BA','#BAFFC9','#BAE1FF','#FFFFBA','#FFDFBA','#E0BBE4','#D4F0F0','#F5DEB3','#98D8C8','#DDA0DD','#87CEEB','#F0E68C','#FFA07A','#90EE90','#B0C4DE','#FFE4B5','#AFEEEE','#DB7093','#8FBC8F','#FFDAB9'];
+        let scheduleArmedEmp = null;                 // employee "armed" for tap-to-assign
+        let scheduleBuilderLoc = null;               // which location the grid edits
+        function v1EmpColor(empId) {
+            const idx = scheduleEmployees.findIndex(e => e.id === empId);
+            return V1_EMP_COLORS[(idx < 0 ? 0 : idx) % V1_EMP_COLORS.length] || '#e5e7eb';
+        }
+        function scheduleArm(empId) {
+            scheduleArmedEmp = (scheduleArmedEmp === empId) ? null : empId;
+            scheduleRenderScheduleBuilder();
+        }
+        function scheduleSetBuilderLoc(loc) {
+            scheduleBuilderLoc = loc;
+            scheduleRenderScheduleBuilder();
+        }
+        function scheduleCellTap(day, shift) {
+            if (scheduleArmedEmp === null) {
+                scheduleShowStatus('בחרו קודם עובד/ת מהרשימה למעלה', 'error');
+                return;
+            }
+            const loc = scheduleBuilderLoc;
+            const assigned = scheduleFinalSchedule[day]?.[shift]?.[loc] || [];
+            if (assigned.some(a => a.id === scheduleArmedEmp)) {
+                scheduleRemoveFromShift(day, shift, loc, scheduleArmedEmp); // re-renders
+            } else {
+                scheduleAddToShift(day, shift, loc, scheduleArmedEmp);      // re-renders
+            }
+        }
+
+        // Render schedule builder as a whole-week matrix (days as columns, shifts as rows)
+        function scheduleRenderScheduleBuilder() {
+            const container = document.getElementById('schedule-builder');
+            if (scheduleBuilderLoc === null) scheduleBuilderLoc = (typeof currentLocation !== 'undefined' ? currentLocation : 'isgav');
+            const loc = scheduleBuilderLoc;
+
+            // Location toggle
+            const locToggle = scheduleLocations.map(l => {
+                const active = l === loc;
+                const lbl = l === 'isgav' ? 'Isgav' : 'Frankfurt';
+                return `<button onclick="scheduleSetBuilderLoc('${l}')" class="px-4 py-2 rounded-full text-sm font-bold ${active ? 'bg-purple-600 text-white shadow' : 'bg-gray-100 text-gray-600'}">${lbl}</button>`;
+            }).join('');
+
+            // Employee pool
+            const pool = scheduleEmployees.length ? scheduleEmployees.map(e => {
+                const armed = scheduleArmedEmp === e.id;
+                return `<button onclick="scheduleArm(${e.id})" class="v1-emp-chip px-3 py-2 rounded-full text-sm font-bold text-gray-800 ${armed ? 'armed' : 'shadow-sm'}" style="background:${v1EmpColor(e.id)}">${e.name}</button>`;
+            }).join('') : '<span class="text-gray-400 text-sm">אין עובדים — הוסיפו עובדים בלשונית "עובדים"</span>';
+
+            // Matrix
+            const headCols = scheduleDays.map((day, i) =>
+                `<th class="text-sm font-extrabold ${i === 0 ? 'text-purple-700' : 'text-gray-600'} px-1">${scheduleDayLabelsHe[day]}</th>`
+            ).join('');
+
+            const rows = scheduleShifts.map(shift => {
+                const hrs = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+                const cells = scheduleDays.map(day => {
+                    const assigned = scheduleFinalSchedule[day]?.[shift]?.[loc] || [];
+                    const filled = assigned.length > 0;
+
+                    // availability tint when an employee is armed
+                    let styleBg = 'background:#ffffff;border-color:#e5e7eb';
+                    if (scheduleArmedEmp !== null) {
+                        const info = scheduleGetEmployeeAvailability(scheduleArmedEmp, day, shift);
+                        if (info.available && info.customHours) styleBg = 'background:#fef3c7;border-color:#fcd34d';
+                        else if (info.available) styleBg = 'background:#dcfce7;border-color:#86efac';
+                        else styleBg = 'background:#ffffff;border-color:#e5e7eb';
+                    } else if (filled) {
+                        styleBg = 'background:#f5f3ff;border-color:#ddd6fe';
+                    }
+
+                    const chips = assigned.map(a => {
+                        const emp = scheduleEmployees.find(e => e.id === a.id);
+                        if (!emp) return '';
+                        const hasCustom = a.customHours !== null;
+                        const ct = hasCustom ? ` ${scheduleFormatTime(a.customHours.start)}-${scheduleFormatTime(a.customHours.end)}` : '';
+                        return `<span class="inline-flex items-center gap-1 rounded-full pr-2 pl-1 py-0.5 text-xs font-bold text-gray-800 shadow-sm ${hasCustom ? 'ring-2 ring-yellow-400' : ''}" style="background:${v1EmpColor(a.id)}">
+                            <span onclick="event.stopPropagation(); openShiftHoursModal('${day}', '${shift}', '${loc}', ${a.id})">${emp.name}${ct}</span>
+                            <span onclick="event.stopPropagation(); scheduleRemoveFromShift('${day}', '${shift}', '${loc}', ${a.id})" class="w-4 h-4 rounded-full bg-black/25 text-white leading-none flex items-center justify-center">&times;</span>
+                        </span>`;
+                    }).join('');
+
+                    return `<td onclick="scheduleCellTap('${day}', '${shift}')" class="v1-cell align-top rounded-xl p-1.5 cursor-pointer border-2" style="${styleBg};min-width:82px;height:66px">
+                        <div class="flex flex-wrap gap-1">${chips}</div>
+                    </td>`;
+                }).join('');
+
+                return `<tr>
+                    <td class="align-middle pl-1"><div class="text-xs font-extrabold text-gray-700">${scheduleShiftLabelsHe[shift]}</div><div class="text-[10px] text-gray-400 whitespace-nowrap">${hrs}</div></td>
+                    ${cells}
+                </tr>`;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="mb-3 flex items-center justify-between gap-2 flex-wrap">
+                    <div class="flex gap-2">${locToggle}</div>
+                    <p class="text-xs text-gray-500">בחרו עובד/ת ואז הקישו על משבצת. ירוק = זמין, כתום = חלקי.</p>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-3 sticky top-16 bg-white/95 backdrop-blur py-2 z-[5] rounded-lg">${pool}</div>
+                <div class="overflow-x-auto -mx-1 px-1">
+                    <table class="w-full border-separate" style="border-spacing:6px;min-width:660px">
+                        <thead><tr><th class="w-14"></th>${headCols}</tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        // Add employee to shift
+        function scheduleAddToShift(day, shift, location, empId) {
+            if (!scheduleFinalSchedule[day]) scheduleFinalSchedule[day] = {};
+            if (!scheduleFinalSchedule[day][shift]) scheduleFinalSchedule[day][shift] = { isgav: [], frankfurt: [] };
+
+            const alreadyAssigned = scheduleFinalSchedule[day][shift][location].some(item => item.id === empId);
+            if (!alreadyAssigned) {
+                scheduleFinalSchedule[day][shift][location].push({ id: empId, customHours: null });
+                scheduleRenderScheduleBuilder();
+            }
+        }
+
+        // Remove employee from shift
+        function scheduleRemoveFromShift(day, shift, location, empId) {
+            if (scheduleFinalSchedule[day]?.[shift]?.[location]) {
+                scheduleFinalSchedule[day][shift][location] = scheduleFinalSchedule[day][shift][location].filter(item => item.id !== empId);
+                scheduleRenderScheduleBuilder();
+            }
+        }
+
+        // Custom hours modal state
+        let shiftHoursModalState = { day: null, shift: null, location: null, empId: null };
+
+        function openShiftHoursModal(day, shift, location, empId) {
+            shiftHoursModalState = { day, shift, location, empId };
+            const emp = scheduleEmployees.find(e => e.id === empId);
+            const assignment = scheduleFinalSchedule[day]?.[shift]?.[location]?.find(a => a.id === empId);
+
+            document.getElementById('shift-hours-employee-name').textContent = emp?.name || '';
+
+            // Pre-fill with existing custom hours or default shift hours
+            if (assignment?.customHours) {
+                document.getElementById('shift-hours-start').value = assignment.customHours.start;
+                document.getElementById('shift-hours-end').value = assignment.customHours.end;
+            } else {
+                document.getElementById('shift-hours-start').value = scheduleShiftHours[shift].start;
+                document.getElementById('shift-hours-end').value = scheduleShiftHours[shift].end;
+            }
+
+            document.getElementById('shift-hours-modal').classList.remove('hidden');
+        }
+
+        function saveShiftCustomHours() {
+            const { day, shift, location, empId } = shiftHoursModalState;
+            const start = document.getElementById('shift-hours-start').value;
+            const end = document.getElementById('shift-hours-end').value;
+
+            if (!start || !end) {
+                alert('Please enter both start and end times');
+                return;
+            }
+
+            const assignment = scheduleFinalSchedule[day]?.[shift]?.[location]?.find(a => a.id === empId);
+            if (assignment) {
+                assignment.customHours = { start, end };
+                scheduleRenderScheduleBuilder();
+            }
+            closeShiftHoursModal();
+        }
+
+        function clearShiftCustomHours() {
+            const { day, shift, location, empId } = shiftHoursModalState;
+            const assignment = scheduleFinalSchedule[day]?.[shift]?.[location]?.find(a => a.id === empId);
+            if (assignment) {
+                assignment.customHours = null;
+                scheduleRenderScheduleBuilder();
+            }
+            closeShiftHoursModal();
+        }
+
+        function closeShiftHoursModal() {
+            document.getElementById('shift-hours-modal').classList.add('hidden');
+            shiftHoursModalState = { day: null, shift: null, location: null, empId: null };
+        }
+
+        async function scheduleSaveSchedule() {
+            try {
+                const weekId = scheduleGetWeekId();
+                const existingData = scheduleWeekData || { weekStart: weekId, availability: {} };
+
+                await api.saveScheduleWeek(weekId, { ...existingData, finalSchedule: scheduleFinalSchedule });
+                scheduleShowStatus('Schedule saved!', 'success');
+            } catch (error) {
+                scheduleShowStatus('Error saving schedule', 'error');
+            }
+        }
+
+        function scheduleSendReminders() {
+            const appUrl = 'https://lirancha.github.io/business-manager/employee.html';
+            const message = `Hi! Please submit your availability for next week.\n\nOpen: ${appUrl}\n\nThanks!`;
+            const text = encodeURIComponent(message);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function scheduleSendScheduleToAll() {
+            const appUrl = 'https://lirancha.github.io/business-manager/employee.html';
+            const message = `Hi everyone!\n\nThe schedule for this week is ready. Check your shifts in the app:\n\n${appUrl}\n\nThanks!`;
+            const text = encodeURIComponent(message);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function scheduleGetEmployeeShifts(empId) {
+            const result = [];
+            scheduleDays.forEach(day => {
+                scheduleShifts.forEach(shift => {
+                    const defaultHours = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+                    scheduleLocations.forEach(loc => {
+                        const assignment = scheduleFinalSchedule[day]?.[shift]?.[loc]?.find(a => a.id === empId);
+                        if (assignment) {
+                            // Use manager custom hours if set, otherwise default
+                            const hours = assignment.customHours
+                                ? `${scheduleFormatTime(assignment.customHours.start)}-${scheduleFormatTime(assignment.customHours.end)}`
+                                : defaultHours;
+                            result.push(`${scheduleDayLabelsHe[day]} - ${scheduleShiftLabelsHe[shift]} (${hours}) @ ${loc === 'isgav' ? 'Isgav' : 'Frankfurt'}`);
+                        }
+                    });
+                });
+            });
+            return result;
+        }
+
+        function schedulePrintSchedule() {
+            const weekEnd = new Date(scheduleCurrentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            // Use DD/MM/YYYY format to avoid RTL issues
+            const startStr = `${scheduleCurrentWeekStart.getDate()}/${scheduleCurrentWeekStart.getMonth() + 1}/${scheduleCurrentWeekStart.getFullYear()}`;
+            const endStr = `${weekEnd.getDate()}/${weekEnd.getMonth() + 1}/${weekEnd.getFullYear()}`;
+
+            // Distinct, print-friendly colors (good contrast with black text)
+            const employeeColors = [
+                '#FFB3BA', // pink
+                '#BAFFC9', // light green
+                '#BAE1FF', // light blue
+                '#FFFFBA', // yellow
+                '#FFDFBA', // peach
+                '#E0BBE4', // lavender
+                '#D4F0F0', // cyan
+                '#F5DEB3', // wheat
+                '#98D8C8', // seafoam
+                '#DDA0DD', // plum
+                '#87CEEB', // sky blue
+                '#F0E68C', // khaki
+                '#FFA07A', // light salmon
+                '#90EE90', // light green 2
+                '#B0C4DE', // light steel blue
+                '#FFE4B5', // moccasin
+                '#AFEEEE', // pale turquoise
+                '#DB7093', // pale violet red
+                '#8FBC8F', // dark sea green
+                '#FFDAB9', // peach puff
+            ];
+
+            // Map each employee to a color
+            const empColorMap = {};
+            scheduleEmployees.forEach((emp, index) => {
+                empColorMap[emp.id] = employeeColors[index % employeeColors.length];
+            });
+
+            // Get employee with hours - returns HTML with name and hours on separate lines
+            // Priority: 1. Manager custom hours, 2. Employee availability hours, 3. No hours (default)
+            function getEmpWithHours(assignment, day, shift, colorMap) {
+                const empId = typeof assignment === 'object' ? assignment.id : assignment;
+                const emp = scheduleEmployees.find(e => e.id === empId);
+                if (!emp) return '';
+
+                const bgColor = colorMap[empId] || '#f0f0f0';
+                const defaultHrs = `${scheduleFormatTime(scheduleShiftHours[shift].start)}-${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+                let customHrs = null;
+
+                // 1. Check manager-assigned custom hours first
+                if (typeof assignment === 'object' && assignment.customHours) {
+                    customHrs = `${scheduleFormatTime(assignment.customHours.start)}-${scheduleFormatTime(assignment.customHours.end)}`;
+                } else {
+                    // 2. Check employee availability custom hours
+                    const avail = scheduleWeekData?.availability?.[empId]?.[day]?.[shift];
+                    if (avail && typeof avail === 'object' && avail.customHours) {
+                        customHrs = `${scheduleFormatTime(avail.customHours.start)}-${scheduleFormatTime(avail.customHours.end)}`;
+                    }
+                }
+
+                // Only show hours if different from default
+                if (customHrs && customHrs !== defaultHrs) {
+                    return `<span class="emp-entry" style="background:${bgColor}">${emp.name}<br><small class="custom-hours">${customHrs}</small></span>`;
+                }
+                return `<span class="emp-entry" style="background:${bgColor}">${emp.name}</span>`;
+            }
+
+            // Build header row with days as columns
+            let headerRow = '<th>משמרת</th>';
+            scheduleDays.forEach(day => {
+                headerRow += `<th>${scheduleDayLabelsHe[day]}</th>`;
+            });
+
+            // Build table rows with shifts as rows
+            let tableRows = '';
+            scheduleShifts.forEach(shift => {
+                const shiftLabel = { morning: 'בוקר', afternoon: 'צהריים', evening: 'ערב' }[shift];
+                const shiftHours = `${scheduleFormatTime(scheduleShiftHours[shift].start)} - ${scheduleFormatTime(scheduleShiftHours[shift].end)}`;
+
+                tableRows += `<tr>
+                    <td class="shift-cell-label">${shiftLabel}<br><span class="hours">${shiftHours}</span></td>`;
+
+                scheduleDays.forEach(day => {
+                    const isgavEmps = (scheduleFinalSchedule[day]?.[shift]?.isgav || [])
+                        .map(a => getEmpWithHours(a, day, shift, empColorMap))
+                        .filter(n => n)
+                        .join(' ') || '-';
+                    const frankfurtEmps = (scheduleFinalSchedule[day]?.[shift]?.frankfurt || [])
+                        .map(a => getEmpWithHours(a, day, shift, empColorMap))
+                        .filter(n => n)
+                        .join(' ') || '-';
+
+                    tableRows += `<td class="shift-cell">
+                        <div class="location"><strong>Isgav:</strong> ${isgavEmps}</div>
+                        <div class="location"><strong>Frankfurt:</strong> ${frankfurtEmps}</div>
+                    </td>`;
+                });
+
+                tableRows += `</tr>`;
+            });
+
+            // Generate legend items
+            const legendItems = scheduleEmployees.map(emp => {
+                const color = empColorMap[emp.id];
+                return `<span class="legend-item" style="background:${color}">${emp.name}</span>`;
+            }).join('');
+
+            const html = `
+            <!DOCTYPE html>
+            <html lang="he" dir="rtl">
+            <head>
+                <meta charset="UTF-8">
+                <title>Zucca - Weekly Schedule</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: Arial, sans-serif; padding: 10px; direction: rtl; max-width: 1000px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #7c3aed; }
+                    .header h1 { color: #7c3aed; margin: 0 0 5px 0; font-size: 22px; }
+                    .header .dates { color: #666; font-size: 14px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th, td { border: 1px solid #ddd; padding: 6px 4px; text-align: right; }
+                    th { background: #7c3aed; color: white; font-weight: bold; font-size: 13px; }
+                    th .hours { font-weight: normal; font-size: 10px; opacity: 0.9; }
+                    .shift-cell-label { background: #f3f4f6; font-weight: bold; width: 70px; font-size: 12px; text-align: center; }
+                    .shift-cell { vertical-align: top; min-width: 120px; }
+                    .location { margin-bottom: 3px; font-size: 12px; }
+                    .location:last-child { margin-bottom: 0; }
+                    .emp-entry { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 4px; background: #f0f0f0; border-radius: 3px; font-size: 11px; }
+                    .custom-hours { color: #666; font-size: 9px; }
+                    tr:nth-child(even) { background: #fafafa; }
+                    .legend { margin-top: 10px; padding-top: 8px; border-top: 1px solid #ddd; }
+                    .legend h3 { font-size: 12px; margin: 0 0 6px 0; color: #666; }
+                    .legend-items { display: flex; flex-wrap: wrap; gap: 5px; }
+                    .legend-item { padding: 2px 6px; border-radius: 3px; font-size: 10px; }
+                    @page { size: landscape; margin: 10mm; }
+                    @media print {
+                        body { padding: 5px; }
+                        .header h1 { font-size: 20px; }
+                        th, td { padding: 5px 4px; }
+                        table, .legend { page-break-inside: avoid; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Zucca - Weekly Schedule</h1>
+                    <div class="dates">${startStr} - ${endStr}</div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>${headerRow}</tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+                <div class="legend">
+                    <h3>מקרא צבעים</h3>
+                    <div class="legend-items">${legendItems}</div>
+                </div>
+            </body>
+            </html>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => { printWindow.print(); }, 250);
+        }
+
+        function scheduleShowStatus(message, type) {
+            const status = document.getElementById('schedule-status-message');
+            status.textContent = message;
+            status.className = `mt-4 p-4 rounded-xl text-center font-medium ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            status.classList.remove('hidden');
+            setTimeout(() => status.classList.add('hidden'), 3000);
+        }
+
+        function scheduleChangeWeek(direction) {
+            scheduleCurrentWeekStart.setDate(scheduleCurrentWeekStart.getDate() + (direction * 7));
+            scheduleUpdateWeekDisplay();
+            scheduleLoadWeekData().then(() => {
+                scheduleRenderAvailabilityTable();
+                scheduleRenderScheduleBuilder();
+            });
+        }
+
+        function scheduleUpdateWeekDisplay() {
+            const weekEnd = new Date(scheduleCurrentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            // Use DD/MM format to avoid RTL issues with Hebrew dates
+            const startDay = scheduleCurrentWeekStart.getDate();
+            const startMonth = scheduleCurrentWeekStart.getMonth() + 1;
+            const endDay = weekEnd.getDate();
+            const endMonth = weekEnd.getMonth() + 1;
+            document.getElementById('schedule-week-label').textContent = 'Week Schedule';
+            document.getElementById('schedule-week-dates').textContent = `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
+        }
+
+        async function scheduleInit() {
+            if (scheduleInitialized) return;
+            scheduleInitialized = true;
+            // Default to next week (more relevant for scheduling)
+            const today = new Date();
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+            scheduleCurrentWeekStart = scheduleGetWeekStart(nextWeek);
+            scheduleUpdateWeekDisplay();
+            await scheduleLoadEmployees();
+            await scheduleLoadWeekData();
+        }
+
+        // =====================================================
+        // END SCHEDULE SYSTEM
+        // =====================================================
+
+        // =====================================================
+        // REMINDERS SYSTEM
+        // =====================================================
+
+        let reminders = [];
+
+        // Initialize reminders
+        async function initReminders() {
+            await loadReminders();
+            updateNotificationButton();
+            loadTelegramSettings();
+        }
+
+        // Load reminders from API
+        async function loadReminders() {
+            try {
+                reminders = await api.listReminders();
+                renderReminders();
+            } catch (error) {
+                console.error('Error loading reminders:', error);
+                reminders = [];
+                renderReminders();
+            }
+        }
+
+        // Render reminders list
+        function renderReminders() {
+            const container = document.getElementById('reminders-list');
+            if (reminders.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">No reminders yet</p>';
+                return;
+            }
+
+            const dayNames = { sunday: 'Sun', monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat' };
+
+            container.innerHTML = reminders.map(reminder => {
+                const daysText = reminder.type === 'recurring'
+                    ? (reminder.days || []).map(d => dayNames[d]).join(', ')
+                    : reminder.date;
+
+                return `
+                <div class="bg-gray-50 rounded-lg p-3 flex items-center justify-between ${!reminder.enabled ? 'opacity-50' : ''}">
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800" dir="rtl">${reminder.title}</p>
+                        <p class="text-sm text-gray-500">
+                            ${reminder.time} • ${reminder.type === 'recurring' ? daysText : reminder.date}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${reminder.enabled ? 'checked' : ''}
+                                   onchange="toggleReminder('${reminder.id}')" class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                        <button onclick="deleteReminder('${reminder.id}')" class="text-red-500 hover:text-red-700 p-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // Toggle reminder type (recurring/one-time)
+        function toggleReminderType() {
+            const type = document.querySelector('input[name="reminder-type"]:checked').value;
+            document.getElementById('recurring-days').classList.toggle('hidden', type !== 'recurring');
+            document.getElementById('one-time-date').classList.toggle('hidden', type !== 'one-time');
+        }
+
+        // Add new reminder
+        async function addReminder() {
+            const title = document.getElementById('reminder-title').value.trim();
+            const time = document.getElementById('reminder-time').value;
+            const type = document.querySelector('input[name="reminder-type"]:checked').value;
+
+            if (!title) {
+                alert('Please enter reminder text');
+                return;
+            }
+
+            if (!time) {
+                alert('Please select a time');
+                return;
+            }
+
+            const reminder = {
+                title,
+                time,
+                type,
+                enabled: true
+            };
+
+            if (type === 'recurring') {
+                const days = Array.from(document.querySelectorAll('.reminder-day:checked')).map(cb => cb.value);
+                if (days.length === 0) {
+                    alert('Please select at least one day');
+                    return;
+                }
+                reminder.days = days;
+            } else {
+                const date = document.getElementById('reminder-date').value;
+                if (!date) {
+                    alert('Please select a date');
+                    return;
+                }
+                reminder.date = date;
+            }
+
+            try {
+                await api.createReminder(reminder);
+                document.getElementById('reminder-title').value = '';
+                document.querySelectorAll('.reminder-day').forEach(cb => cb.checked = false);
+                await loadReminders();
+            } catch (error) {
+                console.error('Error adding reminder:', error);
+                alert('Error adding reminder');
+            }
+        }
+
+        // Toggle reminder enabled/disabled
+        async function toggleReminder(id) {
+            const reminder = reminders.find(r => r.id === id);
+            if (!reminder) return;
+
+            try {
+                await api.updateReminder(id, { enabled: !reminder.enabled });
+                await loadReminders();
+            } catch (error) {
+                console.error('Error toggling reminder:', error);
+            }
+        }
+
+        // Delete reminder
+        async function deleteReminder(id) {
+            if (!confirm('Delete this reminder?')) return;
+
+            try {
+                await api.deleteReminder(id);
+                await loadReminders();
+            } catch (error) {
+                console.error('Error deleting reminder:', error);
+            }
+        }
+
+        // Request notification permission
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                alert('This browser does not support notifications');
+                return;
+            }
+
+            console.log('[Reminders] Current permission:', Notification.permission);
+
+            try {
+                const permission = await Notification.requestPermission();
+                console.log('[Reminders] Permission result:', permission);
+
+                // Update button based on the returned permission
+                updateNotificationButton();
+
+                if (permission === 'granted') {
+                    // Try to send a test notification
+                    new Notification('Zucca Café', {
+                        body: 'Notifications enabled! You will receive reminders.',
+                        icon: '🔔'
+                    });
+                } else if (permission === 'denied') {
+                    alert('Notifications were blocked. Please enable them in your browser settings.');
+                } else {
+                    alert('Permission status: ' + permission + '\n\nIf testing locally, try the GitHub Pages URL instead.');
+                }
+            } catch (error) {
+                console.error('[Reminders] Permission error:', error);
+                alert('Error requesting permission: ' + error.message);
+            }
+        }
+
+        // Update notification button state
+        function updateNotificationButton() {
+            const btn = document.getElementById('notification-btn');
+            if (!('Notification' in window)) {
+                btn.textContent = 'Not Supported';
+                btn.classList.remove('bg-blue-100', 'text-blue-700');
+                btn.classList.add('bg-gray-100', 'text-gray-500');
+                btn.disabled = true;
+            } else if (Notification.permission === 'granted') {
+                btn.textContent = 'Notifications On';
+                btn.classList.remove('bg-blue-100', 'text-blue-700');
+                btn.classList.add('bg-green-100', 'text-green-700');
+            } else if (Notification.permission === 'denied') {
+                btn.textContent = 'Notifications Blocked';
+                btn.classList.remove('bg-blue-100', 'text-blue-700');
+                btn.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+
+        // Show notification (browser notification only - Telegram is handled by server)
+        function showNotification(reminder) {
+            // Browser notification (works on desktop)
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Zucca Café - Reminder', {
+                    body: reminder.title,
+                    icon: '🔔',
+                    tag: reminder.id,
+                    requireInteraction: true
+                });
+            }
+
+            // Play a sound if possible
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleAYAgP/k6M6XPg==');
+                audio.volume = 0.5;
+                audio.play().catch(() => {});
+            } catch (e) {}
+        }
+
+        // Test notification - to verify notifications work
+        function testNotification() {
+            if (!('Notification' in window)) {
+                alert('This browser does not support notifications');
+                return;
+            }
+
+            if (Notification.permission !== 'granted') {
+                alert('Please enable notifications first by clicking "Enable Notifications"');
+                return;
+            }
+
+            new Notification('Zucca Café - Test', {
+                body: 'If you see this, notifications are working!',
+                icon: '🔔',
+                tag: 'test-notification'
+            });
+
+            console.log('[Reminders] Test notification sent');
+        }
+
+        // =====================================================
+        // TELEGRAM INTEGRATION (Server-side via API)
+        // =====================================================
+
+        let telegramConfigured = false;
+
+        // Load Telegram settings from API
+        async function loadTelegramSettings() {
+            const statusEl = document.getElementById('telegram-status');
+            const collapsedEl = document.getElementById('telegram-collapsed');
+            const expandedEl = document.getElementById('telegram-expanded');
+
+            try {
+                const settings = await api.getTelegramSettings();
+                telegramConfigured = settings.configured;
+
+                // If configured, show collapsed state
+                if (telegramConfigured) {
+                    if (collapsedEl) collapsedEl.classList.remove('hidden');
+                    if (expandedEl) expandedEl.classList.add('hidden');
+                    if (statusEl) {
+                        statusEl.textContent = 'Configured';
+                        statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
+                    }
+                } else {
+                    // Not configured, show expanded form
+                    if (collapsedEl) collapsedEl.classList.add('hidden');
+                    if (expandedEl) expandedEl.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('[Telegram] Failed to load settings:', error);
+                if (collapsedEl) collapsedEl.classList.add('hidden');
+                if (expandedEl) expandedEl.classList.remove('hidden');
+            }
+        }
+
+        // Expand Telegram settings (show form)
+        function expandTelegramSettings() {
+            document.getElementById('telegram-collapsed').classList.add('hidden');
+            document.getElementById('telegram-expanded').classList.remove('hidden');
+        }
+
+        // Collapse Telegram settings (show connected status)
+        function collapseTelegramSettings() {
+            if (telegramConfigured) {
+                document.getElementById('telegram-collapsed').classList.remove('hidden');
+                document.getElementById('telegram-expanded').classList.add('hidden');
+            }
+        }
+
+        // Save Telegram settings to API
+        async function saveTelegramSettings() {
+            const tokenInput = document.getElementById('telegram-bot-token');
+            const chatIdInput = document.getElementById('telegram-chat-id');
+
+            const botToken = tokenInput.value.trim();
+            const chatId = chatIdInput.value.trim();
+
+            if (!botToken || !chatId) {
+                alert('Please enter both Bot Token and Chat ID');
+                return;
+            }
+
+            try {
+                await api.saveTelegramSettings(botToken, chatId);
+                telegramConfigured = true;
+
+                const statusEl = document.getElementById('telegram-status');
+                statusEl.textContent = 'Configured';
+                statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
+
+                // Clear the input fields for security
+                tokenInput.value = '';
+                chatIdInput.value = '';
+
+                // Collapse settings after saving
+                collapseTelegramSettings();
+
+                alert('Telegram settings saved! Reminders will be sent even when browser is closed.');
+            } catch (error) {
+                console.error('[Telegram] Failed to save settings:', error);
+                alert('Failed to save settings: ' + error.message);
+            }
+        }
+
+        // Test Telegram connection via API
+        async function testTelegram() {
+            if (!telegramConfigured) {
+                alert('Please save Telegram settings first');
+                return;
+            }
+
+            try {
+                await api.testTelegram();
+                alert('Success! Check your Telegram - you should have received a test message.');
+            } catch (error) {
+                console.error('[Telegram] Test failed:', error);
+                alert('Failed to send test message: ' + error.message);
+            }
+        }
+
+        // Show Telegram setup help
+        function showTelegramHelp() {
+            const helpText = `
+HOW TO SET UP TELEGRAM NOTIFICATIONS:
+
+STEP 1: Create a Bot
+1. Open Telegram
+2. Search for @BotFather
+3. Send: /newbot
+4. Choose a name (e.g., "Zucca Reminders")
+5. Choose a username (e.g., "ZuccaRemindersBot")
+6. Copy the Bot Token (looks like: 123456789:ABC-DEF...)
+
+STEP 2: Get Your Chat ID
+1. Search for @userinfobot in Telegram
+2. Start the chat
+3. It will show your ID number
+4. Copy that number
+
+STEP 3: Start Chat with Your Bot
+1. Search for your bot by username
+2. Click "Start" button
+3. This is required for the bot to message you!
+
+STEP 4: Enter in App
+1. Paste the Bot Token in the first field
+2. Paste your Chat ID in the second field
+3. Click "Save Settings"
+4. Click "Test Telegram" to verify
+            `.trim();
+
+            alert(helpText);
+        }
+
+        // =====================================================
+        // END REMINDERS SYSTEM
+        // =====================================================
+
+        // =====================================================
+        // ORDER REPORTS SYSTEM
+        // =====================================================
+
+        let currentOrderReports = [];
+
+        function openOrderReports() {
+            reportsCurrentMonth = new Date();
+            populateReportsSupplierFilter();
+            loadOrderReports();
+            document.getElementById('order-reports-modal').classList.remove('hidden');
+        }
+
+        function closeOrderReportsModal() {
+            document.getElementById('order-reports-modal').classList.add('hidden');
+        }
+
+        function populateReportsSupplierFilter() {
+            const select = document.getElementById('reports-supplier-filter');
+            select.innerHTML = '<option value="">All Suppliers</option>' +
+                suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        function reportsChangeMonth(delta) {
+            reportsCurrentMonth.setMonth(reportsCurrentMonth.getMonth() + delta);
+            loadOrderReports();
+        }
+
+        function getMonthLabel(date) {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+            return `${months[date.getMonth()]} ${date.getFullYear()}`;
+        }
+
+        function getMonthId(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}`;
+        }
+
+        async function loadOrderReports() {
+            const monthLabel = document.getElementById('reports-month-label');
+            const listContainer = document.getElementById('order-reports-list');
+            const summaryContainer = document.getElementById('order-reports-summary');
+
+            monthLabel.textContent = getMonthLabel(reportsCurrentMonth);
+
+            const supplierFilter = document.getElementById('reports-supplier-filter').value;
+            const monthId = getMonthId(reportsCurrentMonth);
+
+            try {
+                currentOrderReports = await api.listOrders({
+                    location: currentLocation,
+                    month: monthId,
+                    supplier: supplierFilter || undefined
+                });
+
+                if (currentOrderReports.length === 0) {
+                    summaryContainer.classList.add('hidden');
+                    listContainer.innerHTML = '<p class="text-gray-400 text-center py-4">No orders found for this period</p>';
+                    return;
+                }
+
+                // Calculate summary statistics
+                const stats = calculateOrderStats(currentOrderReports);
+                renderOrderSummary(summaryContainer, stats);
+
+                // Group orders by supplier
+                const grouped = {};
+                currentOrderReports.forEach(order => {
+                    const key = order.supplierName || 'No Supplier';
+                    if (!grouped[key]) {
+                        grouped[key] = [];
+                    }
+                    grouped[key].push(order);
+                });
+
+                // Render grouped orders with totals
+                let html = '';
+                Object.keys(grouped).sort().forEach(supplierName => {
+                    const orders = grouped[supplierName];
+                    const supplierTotal = orders.reduce((sum, order) => {
+                        return sum + (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                    }, 0);
+                    html += `
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="font-bold text-indigo-600">${supplierName}</div>
+                                <div class="text-sm">
+                                    <span class="text-gray-500">${orders.length} orders</span>
+                                    ${supplierTotal > 0 ? `<span class="text-indigo-600 font-medium ml-2">₪${supplierTotal.toFixed(2)}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                ${orders.map(order => {
+                                    const date = new Date(order.createdAt).toLocaleDateString();
+                                    const itemCount = order.items?.length || 0;
+                                    const orderTotal = (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                                    return `
+                                        <div class="bg-white rounded p-2 text-sm border-l-2 border-indigo-300">
+                                            <div class="flex justify-between text-gray-600">
+                                                <span>${date}</span>
+                                                <span>${order.categoryName || 'General'}${orderTotal > 0 ? ` - ₪${orderTotal.toFixed(2)}` : ''}</span>
+                                            </div>
+                                            <div class="text-gray-800 mt-1">
+                                                ${order.items?.slice(0, 3).map(i => {
+                                                    const itemStr = `${i.name} x${i.quantity}`;
+                                                    return i.total > 0 ? `${itemStr} (₪${i.total.toFixed(2)})` : itemStr;
+                                                }).join(', ')}
+                                                ${itemCount > 3 ? `<span class="text-gray-400">+${itemCount - 3} more</span>` : ''}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                listContainer.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading order reports:', error);
+                summaryContainer.classList.add('hidden');
+                listContainer.innerHTML = '<p class="text-red-400 text-center py-4">Error loading orders</p>';
+            }
+        }
+
+        function calculateOrderStats(orders) {
+            const stats = {
+                totalOrders: orders.length,
+                totalSpend: 0,
+                productTotals: {}, // { productName: { quantity, unit, spend } }
+                supplierTotals: {} // { supplierName: { orderCount, spend } }
+            };
+
+            orders.forEach(order => {
+                const supplierName = order.supplierName || 'No Supplier';
+
+                // Initialize supplier if not exists
+                if (!stats.supplierTotals[supplierName]) {
+                    stats.supplierTotals[supplierName] = { orderCount: 0, spend: 0 };
+                }
+                stats.supplierTotals[supplierName].orderCount++;
+
+                // Process items
+                (order.items || []).forEach(item => {
+                    const itemTotal = item.total || 0;
+                    stats.totalSpend += itemTotal;
+                    stats.supplierTotals[supplierName].spend += itemTotal;
+
+                    // Aggregate product quantities
+                    const key = item.name;
+                    if (!stats.productTotals[key]) {
+                        stats.productTotals[key] = { quantity: 0, unit: item.unit || 'item', spend: 0 };
+                    }
+                    stats.productTotals[key].quantity += item.quantity || 0;
+                    stats.productTotals[key].spend += itemTotal;
+                });
+            });
+
+            return stats;
+        }
+
+        function renderOrderSummary(container, stats) {
+            // Get top 5 products by quantity
+            const topProducts = Object.entries(stats.productTotals)
+                .sort((a, b) => b[1].quantity - a[1].quantity)
+                .slice(0, 5);
+
+            // Get suppliers sorted by spend
+            const suppliersBySpend = Object.entries(stats.supplierTotals)
+                .sort((a, b) => b[1].spend - a[1].spend);
+
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <!-- Monthly Summary -->
+                    <div class="bg-indigo-50 rounded-lg p-3">
+                        <div class="text-sm font-bold text-indigo-800 mb-2">MONTHLY SUMMARY</div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Orders:</span>
+                            <span class="font-medium">${stats.totalOrders}</span>
+                        </div>
+                        ${stats.totalSpend > 0 ? `
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Spend:</span>
+                            <span class="font-bold text-indigo-600">₪${stats.totalSpend.toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    ${topProducts.length > 0 ? `
+                    <!-- Top Products -->
+                    <div class="bg-amber-50 rounded-lg p-3">
+                        <div class="text-sm font-bold text-amber-800 mb-2">TOP PRODUCTS</div>
+                        <div class="space-y-1">
+                            ${topProducts.map(([name, data]) => {
+                                const unitLabel = data.unit === 'package' ? 'pkg' : 'items';
+                                return `
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-700">${name}</span>
+                                        <span class="text-gray-600">${data.quantity} ${unitLabel}${data.spend > 0 ? ` (₪${data.spend.toFixed(2)})` : ''}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${suppliersBySpend.length > 0 && stats.totalSpend > 0 ? `
+                    <!-- By Supplier -->
+                    <div class="bg-green-50 rounded-lg p-3">
+                        <div class="text-sm font-bold text-green-800 mb-2">BY SUPPLIER</div>
+                        <div class="space-y-1">
+                            ${suppliersBySpend.map(([name, data]) => `
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700">${name}</span>
+                                    <span class="text-gray-600">${data.spend > 0 ? `₪${data.spend.toFixed(2)}` : ''} (${data.orderCount} orders)</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            container.classList.remove('hidden');
+        }
+
+        function generateReportsText() {
+            if (currentOrderReports.length === 0) return 'No orders found';
+
+            // Calculate stats
+            const stats = calculateOrderStats(currentOrderReports);
+
+            let text = `ORDER REPORT - ${getMonthLabel(reportsCurrentMonth)}\n${'═'.repeat(30)}\n\n`;
+
+            // Monthly Summary
+            text += `MONTHLY SUMMARY\n${'─'.repeat(20)}\n`;
+            text += `Total Orders: ${stats.totalOrders}\n`;
+            if (stats.totalSpend > 0) {
+                text += `Total Spend: ₪${stats.totalSpend.toFixed(2)}\n`;
+            }
+            text += '\n';
+
+            // Top Products (up to 5)
+            const topProducts = Object.entries(stats.productTotals)
+                .sort((a, b) => b[1].quantity - a[1].quantity)
+                .slice(0, 5);
+            if (topProducts.length > 0) {
+                text += `TOP PRODUCTS\n${'─'.repeat(20)}\n`;
+                topProducts.forEach(([name, data]) => {
+                    const unitLabel = data.unit === 'package' ? 'pkg' : 'items';
+                    if (data.spend > 0) {
+                        text += `${name}: ${data.quantity} ${unitLabel} (₪${data.spend.toFixed(2)})\n`;
+                    } else {
+                        text += `${name}: ${data.quantity} ${unitLabel}\n`;
+                    }
+                });
+                text += '\n';
+            }
+
+            // By Supplier (if there's spend data)
+            const suppliersBySpend = Object.entries(stats.supplierTotals)
+                .sort((a, b) => b[1].spend - a[1].spend);
+            if (suppliersBySpend.length > 0 && stats.totalSpend > 0) {
+                text += `BY SUPPLIER\n${'─'.repeat(20)}\n`;
+                suppliersBySpend.forEach(([name, data]) => {
+                    text += `${name}: ₪${data.spend.toFixed(2)} (${data.orderCount} orders)\n`;
+                });
+                text += '\n';
+            }
+
+            text += `${'═'.repeat(30)}\n\n`;
+
+            // Group by supplier for detailed orders
+            const grouped = {};
+            currentOrderReports.forEach(order => {
+                const key = order.supplierName || 'No Supplier';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(order);
+            });
+
+            text += `ORDER DETAILS\n${'═'.repeat(30)}\n\n`;
+
+            Object.keys(grouped).sort().forEach(supplierName => {
+                const supplierTotal = grouped[supplierName].reduce((sum, order) => {
+                    return sum + (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                }, 0);
+                text += `${supplierName.toUpperCase()}`;
+                if (supplierTotal > 0) {
+                    text += ` (Total: ₪${supplierTotal.toFixed(2)})`;
+                }
+                text += `\n${'─'.repeat(20)}\n`;
+                grouped[supplierName].forEach(order => {
+                    const date = new Date(order.createdAt).toLocaleDateString();
+                    const orderTotal = (order.items || []).reduce((s, i) => s + (i.total || 0), 0);
+                    text += `\n${date} - ${order.categoryName || 'General'}`;
+                    if (orderTotal > 0) {
+                        text += ` (₪${orderTotal.toFixed(2)})`;
+                    }
+                    text += `:\n`;
+                    order.items?.forEach(item => {
+                        const unitLabel = item.unit === 'package' ? 'pkg' : 'item';
+                        if (item.total > 0) {
+                            text += `  - ${item.name} x${item.quantity} (${unitLabel}) @ ₪${item.price?.toFixed(2) || '0.00'} = ₪${item.total.toFixed(2)}\n`;
+                        } else {
+                            text += `  - ${item.name} x${item.quantity} (${unitLabel})\n`;
+                        }
+                    });
+                });
+                text += '\n';
+            });
+
+            return text;
+        }
+
+        function copyOrderReports() {
+            const text = generateReportsText();
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Order report copied to clipboard!');
+            });
+        }
+
+        function printOrderReports() {
+            const text = generateReportsText();
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Order Report - ${getMonthLabel(reportsCurrentMonth)}</title>
+                    <style>
+                        body { font-family: monospace; white-space: pre-wrap; padding: 20px; }
+                    </style>
+                </head>
+                <body>${text}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function shareOrderReportsWhatsApp() {
+            const text = encodeURIComponent(generateReportsText());
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        // Close reports modal on backdrop click
+        document.getElementById('order-reports-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'order-reports-modal') closeOrderReportsModal();
+        });
+
+        // =====================================================
+        // END ORDER REPORTS SYSTEM
+        // =====================================================
+
+        // =====================================================
+        // V1 COLOR LAUNCHER NAVIGATION
+        // =====================================================
+        const V1_ICONS = {
+            inventory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v4H3z"/><path d="M5 7v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 11h6"/></svg>',
+            tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+            schedule: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+            reminders: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>'
+        };
+        const V1_SECTIONS = [
+            { id: 'inventory', label: 'מלאי',    color: '#4f46e5', icon: V1_ICONS.inventory },
+            { id: 'tasks',     label: 'משימות',  color: '#059669', icon: V1_ICONS.tasks },
+            { id: 'schedule',  label: 'סידור',   color: '#7c3aed', icon: V1_ICONS.schedule },
+            { id: 'reminders', label: 'תזכורות', color: '#e11d48', icon: V1_ICONS.reminders }
+        ];
+        function v1Shade(hex) {
+            const n = parseInt(hex.slice(1), 16);
+            const r = Math.max(0, (n >> 16) - 28), g = Math.max(0, ((n >> 8) & 255) - 22), b = Math.max(0, (n & 255) - 22);
+            return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+        function v1Badge(id) {
+            if (id === 'inventory') {
+                const n = (state.categories || []).reduce((a, c) => a + (c.products || []).filter(p => (p.quantity || 0) > 0).length, 0);
+                return n || '';
+            }
+            if (id === 'tasks') {
+                const n = (state.taskLists || []).reduce((a, l) => a + (l.tasks || []).filter(t => !t.done).length, 0);
+                return n || '';
+            }
+            if (id === 'reminders') {
+                const n = (typeof reminders !== 'undefined' ? reminders : []).filter(r => r.enabled !== false).length;
+                return n || '';
+            }
+            return '';
+        }
+        function v1RenderHome() {
+            const el = document.getElementById('home-screen');
+            if (!el) return;
+            el.innerHTML = `<p class="text-gray-500 mb-4 font-medium">מה נעשה עכשיו?</p>
+                <div class="grid grid-cols-2 gap-4">` +
+                V1_SECTIONS.map(s => {
+                    const b = v1Badge(s.id);
+                    return `<button onclick="openSection('${s.id}')" class="v1-tile rounded-3xl shadow-lg text-white p-5 flex flex-col justify-between text-right"
+                            style="background:linear-gradient(150deg,${s.color},${v1Shade(s.color)});aspect-ratio:1/1">
+                        <div class="flex items-start justify-between">
+                            <div class="w-12 h-12">${s.icon}</div>
+                            ${b ? `<span class="min-w-7 h-7 px-2 rounded-full bg-white text-gray-900 text-sm font-extrabold flex items-center justify-center">${b}</span>` : ''}
+                        </div>
+                        <div class="text-2xl font-extrabold mt-3">${s.label}</div>
+                    </button>`;
+                }).join('') + `</div>`;
+        }
+        function openSection(id) {
+            const s = V1_SECTIONS.find(x => x.id === id);
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('home-bar').classList.add('hidden');
+            document.getElementById('app-main').classList.remove('hidden');
+            const bar = document.getElementById('section-bar');
+            bar.classList.remove('hidden'); bar.classList.add('flex');
+            bar.style.background = s.color;
+            document.getElementById('section-bar-icon').innerHTML = s.icon;
+            document.getElementById('section-bar-title').textContent = s.label;
+            document.getElementById('section-loc').textContent = document.getElementById('location-name').textContent;
+            switchTab(id);
+            window.scrollTo(0, 0);
+        }
+        function goHome() {
+            ['inventory-tab', 'tasks-tab', 'schedule-tab', 'reminders-tab'].forEach(t => {
+                const e = document.getElementById(t); if (e) e.classList.add('hidden');
+            });
+            const bar = document.getElementById('section-bar');
+            bar.classList.add('hidden'); bar.classList.remove('flex');
+            document.getElementById('app-main').classList.add('hidden');
+            document.getElementById('home-bar').classList.remove('hidden');
+            document.getElementById('home-screen').classList.remove('hidden');
+            v1RenderHome();
+            window.scrollTo(0, 0);
+        }
+
+        // Initialize
+        updateLocationUI();
+        loadState();
+        loadSuppliers();
+        initTouchDrag();
+        initTaskListTouchDrag();
+        goHome(); // V1: start on the color launcher home screen
+
+        // Load reminders on page load
+        loadReminders().then(() => {
+            console.log('[Reminders] Loaded on page start:', reminders.length, 'reminders');
+            v1RenderHome(); // refresh reminders badge once loaded
+            // Note: Reminder notifications are now handled server-side via AWS Lambda
+            // Browser notifications still work when the app is open
+        });
+    </script>
+</body>
+</html>
